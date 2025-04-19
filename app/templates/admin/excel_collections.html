@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}Colecciones Excel{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Colecciones desde Excel</h1>
+        <a href="{{ url_for('admin.upload_excel') }}" class="btn btn-primary">
+            <i class="fas fa-file-excel me-2"></i> Subir Nuevo Excel
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Colecciones Importadas</h5>
+        </div>
+        <div class="card-body">
+            {% if imports %}
+            <div class="table-responsive">
+                <table class="table table-hover table-striped">
+                    <thead>
+                        <tr>
+                            <th>Nombre de Colección</th>
+                            <th>Base de Datos</th>
+                            <th>Archivo Original</th>
+                            <th>Fecha de Importación</th>
+                            <th>Filas</th>
+                            <th>Columnas</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for import in imports %}
+                        <tr>
+                            <td>{{ import.collection_id }}</td>
+                            <td>
+                                {% if 'db_name' in import %}
+                                    {{ import.db_name }}
+                                {% else %}
+                                    db_metadata
+                                {% endif %}
+                            </td>
+                            <td>{{ import.original_filename }}</td>
+                            <td>{{ import.upload_date.strftime('%d/%m/%Y %H:%M') }}</td>
+                            <td>{{ import.row_count }}</td>
+                            <td>{{ import.column_count }}</td>
+                            <td>
+                                <div class="btn-group">
+                                    <a href="{{ url_for('admin.view_excel_collection', db_name='db_metadata' if 'db_name' not in import else import.db_name, collection_name=import.collection_id) }}" class="btn btn-sm btn-info">
+                                        <i class="fas fa-eye" title="Ver datos"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ loop.index }}">
+                                        <i class="fas fa-trash" title="Eliminar"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        
+                        <!-- Modal de confirmación para eliminar -->
+                        <div class="modal fade" id="deleteModal{{ loop.index }}" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header bg-danger text-white">
+                                        <h5 class="modal-title">Eliminar Colección</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <p>¿Estás seguro de que deseas eliminar la colección <strong>{{ import.collection_id }}</strong>?</p>
+                                        <p class="text-danger">Esta acción no se puede deshacer y todos los datos se perderán.</p>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                        <form action="{{ url_for('admin.delete_excel_collection', db_name='db_metadata' if 'db_name' not in import else import.db_name, collection_name=import.collection_id) }}" method="POST">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                            <button type="submit" class="btn btn-danger">Eliminar</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i> No hay colecciones importadas aún.
+                <a href="{{ url_for('admin.upload_excel') }}" class="alert-link">Subir un archivo Excel</a>.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

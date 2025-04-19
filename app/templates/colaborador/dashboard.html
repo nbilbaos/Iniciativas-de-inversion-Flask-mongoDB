@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block title %}Panel de Colaborador{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h1 class="mb-4">Panel de Colaborador</h1>
+    
+    <div class="row">
+        <div class="col-md-4 mb-4">
+            <div class="card stats-card colaborador">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title">Tareas Totales</h5>
+                            <h2 class="mb-0">{{ stats.total_tasks }}</h2>
+                        </div>
+                        <div class="stats-icon">
+                            <i class="fas fa-tasks"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-4">
+            <div class="card stats-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title">Completadas</h5>
+                            <h2 class="mb-0">{{ stats.completed_tasks }}</h2>
+                        </div>
+                        <div class="stats-icon">
+                            <i class="fas fa-check-circle text-success"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-4">
+            <div class="card stats-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title">Pendientes</h5>
+                            <h2 class="mb-0">{{ stats.pending_tasks }}</h2>
+                        </div>
+                        <div class="stats-icon">
+                            <i class="fas fa-clock text-warning"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+        <div class="col-md-4 mb-4">
+            <div class="card stats-card colaborador">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title">Iniciativas Asignadas</h5>
+                            <h2 class="mb-0">{{ stats.total_iniciativas }}</h2>
+                        </div>
+                        <div class="stats-icon">
+                            <i class="fas fa-project-diagram"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Acciones Rápidas</h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        <a href="{{ url_for('colaborador.tasks') }}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-list-alt me-2"></i> Ver Mis Tareas
+                        </a>
+                        <a href="{{ url_for('colaborador.profile') }}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-user me-2"></i> Mi Perfil
+                        </a>
+                        <a href="{{ url_for('auth.change_password') }}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-key me-2"></i> Cambiar Mi Contraseña
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        <a href="{{ url_for('colaborador.my_initiatives') }}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-project-diagram me-2"></i> Mis Iniciativas
+                        </a>
+                        <a href="{{ url_for('colaborador.profile') }}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-user me-2"></i> Mi Perfil
+                        </a>
+                        <a href="{{ url_for('auth.change_password') }}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-key me-2"></i> Cambiar Mi Contraseña
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Información del Usuario</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Correo Electrónico:</strong> {{ user_data.email }}</p>
+                    <p><strong>Nombre:</strong> {{ user_data.nombre or 'No especificado' }}</p>
+                    <p><strong>RUT:</strong> {{ user_data.rut or 'No especificado' }}</p>
+                    <p><strong>Títulos:</strong>
+                        {% if user_data.titulos %}
+                            {% for titulo in user_data.titulos %}
+                                <span class="badge bg-info">{{ titulo }}</span>
+                            {% endfor %}
+                        {% else %}
+                            No especificados
+                        {% endif %}
+                    </p>
+                    <p><strong>Último Ingreso:</strong>
+                        {% if user_data.last_login %}
+                            {{ user_data.last_login.strftime('%d/%m/%Y %H:%M:%S') }}
+                        {% else %}
+                            Primer ingreso
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Iniciativas Activas</h5>
+                </div>
+                <div class="card-body">
+                    {% if iniciativas %}
+                    <div class="row">
+                        {% for iniciativa in iniciativas %}
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-100 border-success">
+                                <div class="card-header bg-success text-white">
+                                    <h6 class="mb-0">{{ iniciativa.nombre }}</h6>
+                                </div>
+                                <div class="card-body">
+                                    <p>{{ iniciativa.descripcion or 'Sin descripción' }}</p>
+                                    <div class="text-muted small">
+                                        <div><strong>Asignado el:</strong>
+                                            {{ iniciativa.fecha_asignacion.strftime('%d/%m/%Y') if iniciativa.fecha_asignacion else 'No especificado' }}
+                                        </div>
+                                        <div><strong>Asignado por:</strong> {{ iniciativa.asignado_por or 'No especificado' }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i> No tienes iniciativas asignadas actualmente.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Colección{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Editar Colección: {{ collection.name }}</h1>
+        <a href="{{ url_for('admin.list_collections') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-2"></i> Volver a Colecciones
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Información Básica</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('admin.edit_collection', collection_id=collection._id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <input type="hidden" name="action" value="update_info">
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="name" class="form-label">Nombre de la Colección <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="name" name="name" required 
+                                       pattern="[a-zA-Z0-9_]+" title="Solo letras, números y guiones bajos"
+                                       value="{{ collection.name }}">
+                                <div class="form-text">
+                                    Solo letras, números y guiones bajos (_).
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label for="created_at" class="form-label">Fecha de Creación</label>
+                                <input type="text" class="form-control" id="created_at" value="{{ collection.created_at.strftime('%d/%m/%Y %H:%M:%S') }}" readonly>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Descripción</label>
+                            <textarea class="form-control" id="description" name="description" rows="3">{{ collection.description }}</textarea>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i> Actualizar Información
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Campos de la Colección</h5>
+                    <form method="POST" action="{{ url_for('admin.edit_collection', collection_id=collection._id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <input type="hidden" name="action" value="add_field">
+                        <button type="submit" class="btn btn-light btn-sm">
+                            <i class="fas fa-plus-circle me-2"></i> Añadir Campo
+                        </button>
+                    </form>
+                </div>
+                <div class="card-body">
+                    {% if collection.fields %}
+                    <div class="table-responsive">
+                        <table class="table table-hover table-striped">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Tipo</th>
+                                    <th>Requerido</th>
+                                    <th>Descripción</th>
+                                    <th>Opciones</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for field in collection.fields %}
+                                <tr>
+                                    <td><strong>{{ field.name }}</strong></td>
+                                    <td>{{ field.field_type }}</td>
+                                    <td>
+                                        {% if field.required %}
+                                        <span class="badge bg-success">Sí</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">No</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ field.description }}</td>
+                                    <td>
+                                        {% if field.field_type == 'enum' and field.options.values %}
+                                        <small>Valores: {{ field.options.values|join(', ') }}</small>
+                                        {% elif field.field_type == 'reference' and field.options.reference_collection %}
+                                        <small>Referencia a: {{ field.options.reference_collection }}</small>
+                                        {% else %}
+                                        -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group">
+                                            <a href="{{ url_for('admin.edit_field', collection_id=collection._id, field_name=field.name) }}" class="btn btn-sm btn-primary">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteFieldModal{{ field.name|replace('.', '_') }}">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                        
+                                        <!-- Modal de confirmación para eliminar campo -->
+                                        <div class="modal fade" id="deleteFieldModal{{ field.name|replace('.', '_') }}" tabindex="-1" aria-hidden="true">
+                                            <div class="modal-dialog">
+                                                <div class="modal-content">
+                                                    <div class="modal-header bg-danger text-white">
+                                                        <h5 class="modal-title">Confirmar eliminación</h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                        <p>¿Estás seguro de que deseas eliminar el campo <strong>{{ field.name }}</strong>?</p>
+                                                        <p class="text-danger"><strong>¡Advertencia!</strong> Esta acción eliminará este campo de todos los documentos existentes y no se puede deshacer.</p>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                                        <form action="{{ url_for('admin.delete_field', collection_id=collection._id, field_name=field.name) }}" method="POST">
+                                                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                                            <button type="submit" class="btn btn-danger">Eliminar</button>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i> 
+                        Esta colección no tiene campos definidos. Haz clic en "Añadir Campo" para comenzar a definir la estructura.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Información</h5>
+                </div>
+                <div class="card-body">
+                    <p>Una colección bien definida debe tener:</p>
+                    <ul>
+                        <li><strong>Un propósito claro:</strong> Definido en la descripción</li>
+                        <li><strong>Campos significativos:</strong> Con nombres descriptivos y tipos de datos adecuados</li>
+                        <li><strong>Documentación:</strong> Cada campo debe tener una descripción clara</li>
+                    </ul>
+                    <p class="mb-0 text-muted">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Nota:</strong> Cambiar el nombre de la colección puede afectar a cualquier referencia existente en otras partes del sistema.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Validar que el nombre solo contenga caracteres permitidos
+    document.getElementById('name').addEventListener('input', function() {
+        const nameInput = this;
+        const nameValue = nameInput.value;
+        
+        // Reemplazar caracteres no permitidos
+        const validName = nameValue.replace(/[^a-zA-Z0-9_]/g, '');
+        
+        if (nameValue !== validName) {
+            nameInput.value = validName;
+        }
+    });
+</script>
+{% endblock %}

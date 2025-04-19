@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Subir Archivo Excel{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Subir Archivo Excel a MongoDB</h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Esta herramienta convierte un archivo Excel (.xlsx) en una colección de MongoDB.
+                        Los nombres de las columnas se limpiarán para ser compatibles con MongoDB.
+                    </div>
+
+                    <form method="POST" enctype="multipart/form-data">
+                        {{ form.hidden_tag() }}
+                        
+                        <div class="mb-3">
+                            <label for="excel_file" class="form-label">{{ form.excel_file.label.text }} *</label>
+                            {{ form.excel_file(class="form-control", required=true) }}
+                            {% for error in form.excel_file.errors %}
+                                <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
+                            <div class="form-text">Seleccione un archivo Excel (.xlsx) para importar.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="collection_name" class="form-label">{{ form.collection_name.label.text }} *</label>
+                            {{ form.collection_name(class="form-control", required=true, placeholder="Por ejemplo: iniciativas_2023") }}
+                            {% for error in form.collection_name.errors %}
+                                <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
+                            <div class="form-text">Nombre de la colección en MongoDB donde se guardarán los datos.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="target_db" class="form-label">{{ form.target_db.label.text }} *</label>
+                            {{ form.target_db(class="form-select", required=true) }}
+                            {% for error in form.target_db.errors %}
+                                <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
+                            <div class="form-text">Seleccione la base de datos donde se guardará la colección.</div>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">Cancelar</a>
+                            {{ form.submit(class="btn btn-primary") }}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

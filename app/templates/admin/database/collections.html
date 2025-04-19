@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}Gestión de Base de Datos{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Gestión de Colecciones</h1>
+        <div>
+            <a href="{{ url_for('admin.create_collection') }}" class="btn btn-primary me-2">
+                <i class="fas fa-plus-circle me-2"></i> Nueva Colección
+            </a>
+            <a href="{{ url_for('admin.export_database') }}" class="btn btn-success">
+                <i class="fas fa-file-export me-2"></i> Exportar Base de Datos
+            </a>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Colecciones disponibles</h5>
+        </div>
+        <div class="card-body">
+            {% if collections %}
+            <div class="table-responsive">
+                <table class="table table-hover table-striped">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Descripción</th>
+                            <th>Campos</th>
+                            <th>Documentos</th>
+                            <th>Fecha Creación</th>
+                            <th>Última Actualización</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for collection in collections %}
+                        <tr>
+                            <td><strong>{{ collection.name }}</strong></td>
+                            <td>{{ collection.description | truncate(50) }}</td>
+                            <td>{% if collection.fields %}{{ collection.fields | length }}{% else %}0{% endif %}</td>
+                            <td>{{ collection.document_count }}</td>
+                            <td>
+                                {% if collection.created_at %}
+                                    {{ collection.created_at.strftime('%d/%m/%Y %H:%M') }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if collection.updated_at %}
+                                    {{ collection.updated_at.strftime('%d/%m/%Y %H:%M') }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group">
+                                    <a href="{{ url_for('admin.view_collection_data', collection_id=collection._id) }}" class="btn btn-sm btn-success" title="Ver datos">
+                                        <i class="fas fa-table"></i>
+                                    </a>
+                                    <a href="{{ url_for('admin.edit_collection', collection_id=collection._id) }}" class="btn btn-sm btn-primary" title="Editar estructura">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ collection._id }}" title="Elminar colección">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                                
+                                <!-- Modal de confirmación para eliminar -->
+                                <div class="modal fade" id="deleteModal{{ collection._id }}" tabindex="-1" aria-labelledby="deleteModalLabel{{ collection._id }}" aria-hidden="true">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header bg-danger text-white">
+                                                <h5 class="modal-title" id="deleteModalLabel{{ collection._id }}">Confirmar eliminación</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <p>¿Estás seguro de que deseas eliminar la colección <strong>{{ collection.name }}</strong>?</p>
+                                                <p class="text-danger"><strong>¡Advertencia!</strong> Esta acción eliminará todos los datos asociados a esta colección y no se puede deshacer.</p>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                                <form action="{{ url_for('admin.delete_collection', collection_id=collection._id) }}" method="POST">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                                    <button type="submit" class="btn btn-danger">Eliminar</button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i> No hay colecciones definidas en la base de datos. Crea una nueva colección para comenzar.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0">Información</h5>
+        </div>
+        <div class="card-body">
+            <p>En esta sección puedes gestionar la estructura de la base de datos de iniciativas de inversión:</p>
+            <ul>
+                <li>Crear nuevas colecciones para almacenar datos específicos</li>
+                <li>Definir los campos y tipos de datos para cada colección</li>
+                <li>Modificar la estructura de las colecciones existentes</li>
+                <li>Exportar la base de datos completa cuando sea necesario</li>
+            </ul>
+            <p class="mb-0 text-muted">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>Nota:</strong> Recuerda que una vez creada la base de datos, no podrá ser eliminada, solo modificada.
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

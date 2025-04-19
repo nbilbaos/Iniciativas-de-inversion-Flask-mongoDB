@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Mis Tareas{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Mis Tareas</h1>
+        <a href="{{ url_for('colaborador.dashboard') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-2"></i> Volver al Dashboard
+        </a>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="alert alert-info">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="fas fa-tools fa-2x"></i>
+                    </div>
+                    <div>
+                        <h4 class="alert-heading">Módulo en Desarrollo</h4>
+                        <p class="mb-0">Esta funcionalidad se encuentra actualmente en desarrollo. Próximamente podrás ver y gestionar tus tareas desde esta sección.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">Próximas Funcionalidades</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <div class="feature-card p-3 border rounded">
+                        <div class="d-flex align-items-center mb-3">
+                            <i class="fas fa-list text-primary me-3 fa-2x"></i>
+                            <h5 class="mb-0">Lista de Tareas</h5>
+                        </div>
+                        <p class="text-muted">Visualiza todas tus tareas pendientes y completadas en un solo lugar.</p>
+                    </div>
+                </div>
+                
+                <div class="col-md-4 mb-3">
+                    <div class="feature-card p-3 border rounded">
+                        <div class="d-flex align-items-center mb-3">
+                            <i class="fas fa-calendar-alt text-success me-3 fa-2x"></i>
+                            <h5 class="mb-0">Calendario</h5>
+                        </div>
+                        <p class="text-muted">Visualiza tus tareas en formato de calendario para una mejor organización.</p>
+                    </div>
+                </div>
+                
+                <div class="col-md-4 mb-3">
+                    <div class="feature-card p-3 border rounded">
+                        <div class="d-flex align-items-center mb-3">
+                            <i class="fas fa-chart-line text-warning me-3 fa-2x"></i>
+                            <h5 class="mb-0">Estadísticas</h5>
+                        </div>
+                        <p class="text-muted">Analiza tu rendimiento y productividad con gráficos detallados.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .feature-card {
+        transition: all 0.3s ease;
+        height: 100%;
+    }
+    
+    .feature-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+</style>
+{% endblock %}

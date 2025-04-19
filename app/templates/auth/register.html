@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+
+{% block title %}Registrar Usuario{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Registrar Nuevo Usuario</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('auth.register') }}" novalidate>
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Correo Electrónico *</label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                            {% if form and form.email.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.email.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="nombre" class="form-label">Nombre Completo *</label>
+                            <input type="text" class="form-control" id="nombre" name="nombre" required>
+                            {% if form and form.nombre.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.nombre.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="rut" class="form-label">RUT *</label>
+                            <input type="text" class="form-control" id="rut" name="rut" required placeholder="12.345.678-9">
+                            {% if form and form.rut.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.rut.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="telefono" class="form-label">Teléfono de Contacto</label>
+                                <input type="text" class="form-control" id="telefono" name="telefono" placeholder="+56 9 1234 5678">
+                                {% if form and form.telefono.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.telefono.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="role" class="form-label">Rol *</label>
+                                <select class="form-select" id="role" name="role" required>
+                                    <option value="director">Director</option>
+                                    <option value="colaborador">Colaborador</option>
+                                </select>
+                                {% if form and form.role.errors %}
+                                    <div class="invalid-feedback d-block">
+                                        {% for error in form.role.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="direccion" class="form-label">Dirección</label>
+                            <input type="text" class="form-control" id="direccion" name="direccion" placeholder="Dirección completa">
+                            {% if form and form.direccion.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.direccion.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="titulos" class="form-label">Títulos (separados por coma)</label>
+                            <input type="text" class="form-control" id="titulos" name="titulos" placeholder="Ingeniero Civil, MBA, Doctor en Ciencias, etc.">
+                            {% if form and form.titulos.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.titulos.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">Ingrese los títulos separados por comas</div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Contraseña *</label>
+                            <input type="password" class="form-control" id="password" name="password" required>
+                            {% if form and form.password.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.password.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">
+                                La contraseña debe tener al menos 8 caracteres e incluir una letra mayúscula,
+                                una letra minúscula, un número y un carácter especial.
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="confirm_password" class="form-label">Confirmar Contraseña *</label>
+                            <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                            {% if form and form.confirm_password.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.confirm_password.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('admin.user_list') }}" class="btn btn-secondary">Cancelar</a>
+                            <button type="submit" class="btn btn-primary">Registrar Usuario</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Script para formatear el RUT chileno correctamente
+    document.getElementById('rut').addEventListener('input', function(e) {
+        // Eliminar caracteres no deseados (sólo permitir números y K)
+        let value = this.value.replace(/[^\dkK]/g, '');
+
+        // No hacer nada si está vacío
+        if (!value) {
+            this.value = '';
+            return;
+        }
+
+        // Separar dígito verificador
+        let cuerpo = value;
+        let dv = '';
+
+        if (value.length > 1) {
+            // El último carácter es el dígito verificador
+            dv = value.charAt(value.length - 1);
+            cuerpo = value.slice(0, -1);
+
+            // Formatear cuerpo con puntos
+            if (cuerpo.length > 3) {
+                cuerpo = cuerpo.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            }
+
+            // Unir con guión
+            this.value = cuerpo + '-' + dv;
+        } else {
+            this.value = value;
+        }
+    });
+
+    // Script para verificar la fortaleza de la contraseña en tiempo real
+    document.getElementById('password').addEventListener('input', function() {
+        const password = this.value;
+        const hasUpperCase = /[A-Z]/.test(password);
+        const hasLowerCase = /[a-z]/.test(password);
+        const hasNumbers = /\d/.test(password);
+        const hasSpecialChars = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+        const isLongEnough = password.length >= 8;
+
+        // Cambiar el color del borde según la fortaleza
+        if (isLongEnough && hasUpperCase && hasLowerCase && hasNumbers && hasSpecialChars) {
+            this.style.borderColor = 'green';
+        } else if (isLongEnough && (hasUpperCase || hasLowerCase) && (hasNumbers || hasSpecialChars)) {
+            this.style.borderColor = 'orange';
+        } else {
+            this.style.borderColor = 'red';
+        }
+    });
+
+    // Verificar que las contraseñas coincidan
+    document.getElementById('confirm_password').addEventListener('input', function() {
+        const password = document.getElementById('password').value;
+
+        if (this.value === password) {
+            this.style.borderColor = 'green';
+        } else {
+            this.style.borderColor = 'red';
+        }
+    });
+</script>
+{% endblock %}

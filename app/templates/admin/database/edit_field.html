@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Campo {{ field.name }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Editar Campo: {{ field.name }}</h1>
+        <a href="{{ url_for('admin.edit_collection', collection_id=collection._id) }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-2"></i> Volver a la Colección
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Información del Campo</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('admin.edit_field', collection_id=collection._id, field_name=field.name) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Nombre del Campo</label>
+                            <input type="text" class="form-control" id="name" value="{{ field.name }}" readonly>
+                            <div class="form-text text-warning">
+                                <i class="fas fa-exclamation-triangle me-1"></i>
+                                El nombre del campo no se puede modificar para mantener la integridad de los datos.
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="field_type" class="form-label">Tipo de Campo</label>
+                            <input type="text" class="form-control" id="field_type" value="{{ field.field_type }}" readonly>
+                            <div class="form-text text-warning">
+                                <i class="fas fa-exclamation-triangle me-1"></i>
+                                El tipo de campo no se puede modificar para mantener la integridad de los datos.
+                            </div>
+                        </div>
+                        
+                        <!-- Opciones específicas según el tipo de campo -->
+                        {% if field.field_type == 'enum' %}
+                        <div class="mb-3">
+                            <label for="enum_values" class="form-label">Valores Posibles <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="enum_values" name="enum_values" 
+                                  value="{{ field.options.values|join(', ') if field.options.values else '' }}" required>
+                            <div class="form-text">
+                                Ingresa los valores posibles separados por coma (ejemplo: Aprobado, Rechazado, Pendiente).
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Descripción</label>
+                            <textarea class="form-control" id="description" name="description" rows="3">{{ field.description }}</textarea>
+                            <div class="form-text">
+                                Descripción clara del propósito de este campo y qué tipo de información debe contener.
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="required" name="required" 
+                                  {% if field.required %}checked{% endif %}>
+                            <label class="form-check-label" for="required">Campo requerido</label>
+                            <div class="form-text">
+                                Si está marcado, este campo deberá tener un valor en todos los documentos.
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Las modificaciones no afectarán a los datos existentes. Solo cambiarán las propiedades del campo para futuros documentos.
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('admin.edit_collection', collection_id=collection._id) }}" class="btn btn-secondary">
+                                Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i> Guardar Cambios
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Información del Tipo de Campo</h5>
+                </div>
+                <div class="card-body">
+                    {% if field.field_type == 'text' %}
+                    <p>El campo <strong>{{ field.name }}</strong> es de tipo <strong>Texto</strong>.</p>
+                    <p>Los campos de texto pueden almacenar cadenas de caracteres como nombres, descripciones, comentarios, etc.</p>
+                    
+                    {% elif field.field_type == 'number' %}
+                    <p>El campo <strong>{{ field.name }}</strong> es de tipo <strong>Número</strong>.</p>
+                    <p>Los campos numéricos pueden almacenar cualquier tipo de número, incluyendo enteros y decimales.</p>
+                    
+                    {% elif field.field_type == 'integer' %}
+                    <p>El campo <strong>{{ field.name }}</strong> es de tipo <strong>Entero</strong>.</p>
+                    <p>Los campos de tipo entero solo pueden almacenar números enteros (sin decimales).</p>
+                    
+                    {% elif field.field_type == 'decimal' %}
+                    <p>El campo <strong>{{ field.name }}</strong> es de tipo <strong>Decimal</strong>.</p>
+                    <p>Ideal para almacenar valores monetarios, porcentajes, o cualquier número que requiera precisión decimal.</p>
+                    
+                    {% elif field.field_type == 'date' %}
+                    <p>El campo <strong>{{ field.name }}</strong> es de tipo <strong>Fecha</strong>.</p>
+                    <p>Almacena fechas sin incluir información de hora.</p>
+                    
+                    {% elif field.field_type == 'datetime' %}
+                    <p>El campo <strong>{{ field.name }}</strong> es de tipo <strong>Fecha y Hora</strong>.</p>
+                    <p>Almacena fechas completas incluyendo información de hora.</p>
+                    
+                    {% elif field.field_type == 'boolean' %}
+                    <p>El campo <strong>{{ field.name }}</strong> es de tipo <strong>Booleano</strong>.</p>
+                    <p>Los campos booleanos solo pueden tener dos valores: Verdadero (Sí) o Falso (No).</p>
+                    
+                    {% elif field.field_type == 'enum' %}
+                    <p>El campo <strong>{{ field.name }}</strong> es de tipo <strong>Lista de Opciones</strong>.</p>
+                    <p>Este tipo de campo permite seleccionar entre un conjunto predefinido de valores.</p>
+                    
+                    {% elif field.field_type == 'reference' %}
+                    <p>El campo <strong>{{ field.name }}</strong> es de tipo <strong>Referencia</strong>.</p>
+                    <p>Este campo hace referencia a documentos en la colección <strong>{{ field.options.reference_collection }}</strong>.</p>
+                    
+                    {% else %}
+                    <p>El campo <strong>{{ field.name }}</strong> es de tipo <strong>{{ field.field_type }}</strong>.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

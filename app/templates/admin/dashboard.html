@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}Panel de Administración{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h1 class="mb-4">Panel de Administración</h1>
+    
+    <div class="row">
+        <div class="col-md-4 mb-4">
+            <div class="card stats-card admin">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title">Total Usuarios</h5>
+                            <h2 class="mb-0">{{ stats.total_users }}</h2>
+                        </div>
+                        <div class="stats-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-4">
+            <div class="card stats-card director">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title">Directores</h5>
+                            <h2 class="mb-0">{{ stats.directors }}</h2>
+                        </div>
+                        <div class="stats-icon">
+                            <i class="fas fa-user-tie"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-4">
+            <div class="card stats-card colaborador">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title">Colaboradores</h5>
+                            <h2 class="mb-0">{{ stats.colaboradores }}</h2>
+                        </div>
+                        <div class="stats-icon">
+                            <i class="fas fa-user"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Acciones Rápidas</h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        <a href="{{ url_for('auth.register') }}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-user-plus me-2"></i> Registrar Nuevo Usuario
+                        </a>
+                        <a href="{{ url_for('admin.user_list') }}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-users-cog me-2"></i> Administrar Usuarios
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Información del Sistema</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Usuario actual:</strong> {{ current_user.email }}</p>
+                    <p><strong>Rol:</strong> {{ current_user.role }}</p>
+                    <p><strong>Último ingreso:</strong> 
+                        {% if current_user.last_login %}
+                            {{ current_user.last_login.strftime('%d/%m/%Y %H:%M:%S') }}
+                        {% else %}
+                            Primer ingreso
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card-body">
+    <div class="list-group">
+        <a href="{{ url_for('auth.register') }}" class="list-group-item list-group-item-action">
+            <i class="fas fa-user-plus me-2"></i> Registrar Nuevo Usuario
+        </a>
+        <a href="{{ url_for('admin.user_list') }}" class="list-group-item list-group-item-action">
+            <i class="fas fa-users-cog me-2"></i> Administrar Usuarios
+        </a>
+        <a href="{{ url_for('admin.list_collections') }}" class="list-group-item list-group-item-action">
+            <i class="fas fa-database me-2"></i> Gestionar Base de Datos
+        </a>
+        <a href="{{ url_for('admin.excel_collections') }}" class="list-group-item list-group-item-action">
+            <i class="fas fa-database me-2"></i> Ver planilla de excel
+        </a>
+    </div>
+</div>
+
+{% endblock %}

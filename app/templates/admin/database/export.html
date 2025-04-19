@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+
+{% block title %}Exportar Base de Datos{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Exportar Base de Datos de Iniciativas</h1>
+        <a href="{{ url_for('admin.list_collections') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-2"></i> Volver a Colecciones
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Opciones de Exportación</h5>
+                </div>
+                <div class="card-body">
+                    <form id="exportForm" method="POST" action="{{ url_for('admin.export_database') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        
+                        <div class="mb-4">
+                            <label class="form-label">Formato de Exportación</label>
+                            <div class="d-flex flex-column flex-md-row gap-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="format" id="formatJSON" value="json" checked>
+                                    <label class="form-check-label" for="formatJSON">
+                                        <i class="fas fa-file-code me-2"></i> JSON (Base de datos completa)
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="format" id="formatCSV" value="csv">
+                                    <label class="form-check-label" for="formatCSV">
+                                        <i class="fas fa-file-csv me-2"></i> CSV (Un archivo por colección)
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <div class="d-flex">
+                                <div class="me-3">
+                                    <i class="fas fa-info-circle fa-2x"></i>
+                                </div>
+                                <div>
+                                    <h5 class="alert-heading">Información sobre la exportación</h5>
+                                    <p class="mb-0">
+                                        La exportación incluirá todas las colecciones definidas en la base de datos, 
+                                        incluyendo sus metadatos (estructura) y los datos almacenados en cada una.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="formatInfo" class="mb-4">
+                            <h6>Detalles del formato seleccionado:</h6>
+                            <div id="jsonInfo">
+                                <ul class="list-unstyled ms-4">
+                                    <li><i class="fas fa-check-circle text-success me-2"></i> Exporta toda la base de datos en un solo archivo</li>
+                                    <li><i class="fas fa-check-circle text-success me-2"></i> Mantiene la estructura y relaciones entre colecciones</li>
+                                    <li><i class="fas fa-check-circle text-success me-2"></i> Ideal para respaldos completos del sistema</li>
+                                    <li><i class="fas fa-check-circle text-success me-2"></i> Fácil de importar nuevamente al sistema</li>
+                                </ul>
+                            </div>
+                            <div id="csvInfo" class="d-none">
+                                <ul class="list-unstyled ms-4">
+                                    <li><i class="fas fa-check-circle text-success me-2"></i> Genera un archivo CSV separado por cada colección</li>
+                                    <li><i class="fas fa-check-circle text-success me-2"></i> Ideal para análisis de datos en Excel u otras herramientas</li>
+                                    <li><i class="fas fa-check-circle text-success me-2"></i> Fácil de compartir con usuarios externos al sistema</li>
+                                    <li><i class="fas fa-exclamation-circle text-warning me-2"></i> No incluye metadatos de estructura de colecciones</li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="button" id="exportButton" class="btn btn-primary">
+                                <i class="fas fa-file-export me-2"></i> Exportar Base de Datos
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Recomendaciones</h5>
+                </div>
+                <div class="card-body">
+                    <ul>
+                        <li><strong>Respaldos regulares:</strong> Se recomienda exportar la base de datos regularmente como respaldo.</li>
+                        <li><strong>Documentación:</strong> Guarda una copia de la estructura de la base de datos para referencia.</li>
+                        <li><strong>Seguridad:</strong> Almacena los archivos exportados en un lugar seguro.</li>
+                        <li><strong>Formato JSON:</strong> Utiliza este formato para respaldos completos del sistema.</li>
+                        <li><strong>Formato CSV:</strong> Ideal para análisis de datos o cuando necesites compartir información con otros usuarios.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal para mostrar el progreso y resultado de la exportación -->
+    <div class="modal fade" id="exportModal" tabindex="-1" aria-labelledby="exportModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="exportModalLabel">Exportando Base de Datos</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="exportProgress">
+                        <div class="text-center mb-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Exportando...</span>
+                            </div>
+                            <p class="mt-2">Exportando la base de datos. Por favor, espere...</p>
+                        </div>
+                    </div>
+                    <div id="exportResult" class="d-none">
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle me-2"></i>
+                            <span id="exportSuccessMessage">La exportación se ha completado exitosamente.</span>
+                        </div>
+                        <div id="downloadLinks" class="d-flex flex-column gap-2">
+                            <!-- Los enlaces de descarga se generarán dinámicamente aquí -->
+                        </div>
+                    </div>
+                    <div id="exportError" class="d-none">
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-circle me-2"></i>
+                            <span id="exportErrorMessage">Ha ocurrido un error durante la exportación.</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Cambiar la información mostrada según el formato seleccionado
+    document.querySelectorAll('input[name="format"]').forEach(input => {
+        input.addEventListener('change', function() {
+            const jsonInfo = document.getElementById('jsonInfo');
+            const csvInfo = document.getElementById('csvInfo');
+            
+            if (this.value === 'json') {
+                jsonInfo.classList.remove('d-none');
+                csvInfo.classList.add('d-none');
+            } else {
+                jsonInfo.classList.add('d-none');
+                csvInfo.classList.remove('d-none');
+            }
+        });
+    });
+    
+    // Manejar la exportación de la base de datos
+    document.getElementById('exportButton').addEventListener('click', function() {
+        // Mostrar el modal de progreso
+        const exportModal = new bootstrap.Modal(document.getElementById('exportModal'));
+        exportModal.show();
+        
+        // Obtener el formato seleccionado
+        const format = document.querySelector('input[name="format"]:checked').value;
+        
+        // Preparar los datos del formulario
+        const formData = new FormData();
+        formData.append('csrf_token', document.querySelector('input[name="csrf_token"]').value);
+        formData.append('format', format);
+        
+        // Realizar la petición AJAX
+        fetch('{{ url_for("admin.export_database") }}', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Ocultar el progreso y mostrar el resultado
+            document.getElementById('exportProgress').classList.add('d-none');
+            
+            if (data.success) {
+                document.getElementById('exportResult').classList.remove('d-none');
+                
+                // Generar enlaces de descarga según el formato
+                const downloadLinks = document.getElementById('downloadLinks');
+                downloadLinks.innerHTML = ''; // Limpiar enlaces anteriores
+                
+                if (format === 'json') {
+                    // Crear un objeto Blob con los datos
+                    const blob = new Blob([data.data], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    
+                    // Crear enlace de descarga
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = data.filename;
+                    link.className = 'btn btn-primary';
+                    link.innerHTML = '<i class="fas fa-download me-2"></i> Descargar Base de Datos (JSON)';
+                    
+                    downloadLinks.appendChild(link);
+                } else if (format === 'csv') {
+                    // Para cada colección, crear un enlace de descarga
+                    for (const [collectionName, csvData] of Object.entries(data.data)) {
+                        const blob = new Blob([csvData], { type: 'text/csv' });
+                        const url = URL.createObjectURL(blob);
+                        
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.download = `${data.filename_prefix}_${collectionName}.csv`;
+                        link.className = 'btn btn-outline-primary';
+                        link.innerHTML = `<i class="fas fa-download me-2"></i> Descargar ${collectionName}.csv`;
+                        
+                        downloadLinks.appendChild(link);
+                    }
+                }
+            } else {
+                document.getElementById('exportError').classList.remove('d-none');
+                document.getElementById('exportErrorMessage').textContent = data.message || 'Ha ocurrido un error durante la exportación.';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('exportProgress').classList.add('d-none');
+            document.getElementById('exportError').classList.remove('d-none');
+            document.getElementById('exportErrorMessage').textContent = 'Error en la comunicación con el servidor.';
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+
+{% block title %}Añadir Campo a {{ collection.name }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Añadir Campo a la Colección: {{ collection.name }}</h1>
+        <a href="{{ url_for('admin.edit_collection', collection_id=collection._id) }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-2"></i> Volver a la Colección
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Información del Campo</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('admin.add_field', collection_id=collection._id) }}" id="addFieldForm">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Nombre del Campo <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="name" name="name" required 
+                                   pattern="[a-zA-Z0-9_]+" title="Solo letras, números y guiones bajos">
+                            <div class="form-text">
+                                El nombre del campo solo puede contener letras, números y guiones bajos (_). 
+                                No se permiten espacios ni caracteres especiales.
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="field_type" class="form-label">Tipo de Campo <span class="text-danger">*</span></label>
+                            <select class="form-select" id="field_type" name="field_type" required>
+                                <option value="">Seleccionar tipo de campo</option>
+                                {% for type_key, type_label in field_types.items() %}
+                                <option value="{{ type_key }}">{{ type_label }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">
+                                Selecciona el tipo de datos que almacenará este campo.
+                            </div>
+                        </div>
+                        
+                        <!-- Opciones específicas según el tipo de campo -->
+                        <div id="enumOptions" class="mb-3 d-none">
+                            <label for="enum_values" class="form-label">Valores Posibles <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="enum_values" name="enum_values">
+                            <div class="form-text">
+                                Ingresa los valores posibles separados por coma (ejemplo: Aprobado, Rechazado, Pendiente).
+                            </div>
+                        </div>
+                        
+                        <div id="referenceOptions" class="mb-3 d-none">
+                            <label for="reference_collection" class="form-label">Colección de Referencia <span class="text-danger">*</span></label>
+                            <select class="form-select" id="reference_collection" name="reference_collection">
+                                <option value="">Seleccionar colección de referencia</option>
+                                {% for col in all_collections %}
+                                {% if col._id != collection._id %}
+                                <option value="{{ col.name }}">{{ col.name }}</option>
+                                {% endif %}
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">
+                                Selecciona la colección a la que hará referencia este campo.
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Descripción</label>
+                            <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                            <div class="form-text">
+                                Descripción clara del propósito de este campo y qué tipo de información debe contener.
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="required" name="required">
+                            <label class="form-check-label" for="required">Campo requerido</label>
+                            <div class="form-text">
+                                Si está marcado, este campo deberá tener un valor en todos los documentos.
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i> Añadir Campo
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Guía de Tipos de Datos</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <ul class="list-group">
+                                <li class="list-group-item">
+                                    <strong>Texto:</strong> Para cadenas de texto (nombres, descripciones, etc.)
+                                </li>
+                                <li class="list-group-item">
+                                    <strong>Número:</strong> Para valores numéricos generales
+                                </li>
+                                <li class="list-group-item">
+                                    <strong>Entero:</strong> Solo para números enteros
+                                </li>
+                                <li class="list-group-item">
+                                    <strong>Decimal:</strong> Para números con decimales (presupuestos, etc.)
+                                </li>
+                                <li class="list-group-item">
+                                    <strong>Fecha:</strong> Solo para fechas (sin hora)
+                                </li>
+                                <li class="list-group-item">
+                                    <strong>Fecha y Hora:</strong> Para almacenar fecha y hora
+                                </li>
+                                <li class="list-group-item">
+                                    <strong>Booleano:</strong> Para valores de tipo Sí/No
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <ul class="list-group">
+                                <li class="list-group-item">
+                                    <strong>Lista:</strong> Para almacenar múltiples valores
+                                </li>
+                                <li class="list-group-item">
+                                    <strong>Objeto:</strong> Para estructuras de datos anidadas
+                                </li>
+                                <li class="list-group-item">
+                                    <strong>Referencia:</strong> Para relacionar con otras colecciones
+                                </li>
+                                <li class="list-group-item">
+                                    <strong>Archivo:</strong> Para referencias a archivos (documentos, imágenes, etc.)
+                                </li>
+                                <li class="list-group-item">
+                                    <strong>Correo electrónico:</strong> Validado como dirección de email
+                                </li>
+                                <li class="list-group-item">
+                                    <strong>URL:</strong> Para direcciones web
+                                </li>
+                                <li class="list-group-item">
+                                    <strong>Lista de opciones:</strong> Para seleccionar entre valores predefinidos
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Validar que el nombre solo contenga caracteres permitidos
+    document.getElementById('name').addEventListener('input', function() {
+        const nameInput = this;
+        const nameValue = nameInput.value;
+        
+        // Reemplazar caracteres no permitidos
+        const validName = nameValue.replace(/[^a-zA-Z0-9_]/g, '');
+        
+        if (nameValue !== validName) {
+            nameInput.value = validName;
+        }
+    });
+    
+    // Mostrar opciones específicas según el tipo de campo seleccionado
+    document.getElementById('field_type').addEventListener('change', function() {
+        const fieldType = this.value;
+        const enumOptions = document.getElementById('enumOptions');
+        const referenceOptions = document.getElementById('referenceOptions');
+        
+        // Ocultar todas las opciones específicas primero
+        enumOptions.classList.add('d-none');
+        referenceOptions.classList.add('d-none');
+        
+        // Mostrar opciones según el tipo seleccionado
+        if (fieldType === 'enum') {
+            enumOptions.classList.remove('d-none');
+            document.getElementById('enum_values').setAttribute('required', 'required');
+        } else {
+            document.getElementById('enum_values').removeAttribute('required');
+        }
+        
+        if (fieldType === 'reference') {
+            referenceOptions.classList.remove('d-none');
+            document.getElementById('reference_collection').setAttribute('required', 'required');
+        } else {
+            document.getElementById('reference_collection').removeAttribute('required');
+        }
+    });
+    
+    // Validación del formulario antes de enviar
+    document.getElementById('addFieldForm').addEventListener('submit', function(event) {
+        const fieldType = document.getElementById('field_type').value;
+        
+        if (fieldType === 'enum') {
+            const enumValues = document.getElementById('enum_values').value.trim();
+            if (enumValues === '') {
+                event.preventDefault();
+                alert('Debe proporcionar al menos un valor para el campo de tipo lista de opciones.');
+            }
+        }
+        
+        if (fieldType === 'reference') {
+            const referenceCollection = document.getElementById('reference_collection').value;
+            if (referenceCollection === '') {
+                event.preventDefault();
+                alert('Debe seleccionar una colección de referencia.');
+            }
+        }
+    });
+</script>
+{% endblock %}

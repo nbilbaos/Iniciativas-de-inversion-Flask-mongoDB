@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+
+{% block title %}Detalles de Usuario{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Detalles de Usuario</h1>
+        <a href="{{ url_for('admin.user_list') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-2"></i> Volver a la lista
+        </a>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Información del Usuario</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table">
+                        <tr>
+                            <th style="width: 30%">ID:</th>
+                            <td>{{ user._id }}</td>
+                        </tr>
+                        <tr>
+                            <th>Email:</th>
+                            <td>{{ user.email }}</td>
+                        </tr>
+                        <tr>
+                            <th>Nombre:</th>
+                            <td>{{ user.nombre if user.nombre else '-' }}</td>
+                        </tr>
+                        <tr>
+                            <th>RUT:</th>
+                            <td>{{ user.rut if user.rut else '-' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Teléfono:</th>
+                            <td>{{ user.telefono if user.telefono else '-' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Dirección:</th>
+                            <td>{{ user.direccion if user.direccion else '-' }}</td>
+                        </tr>
+                        <tr>
+                            <th>Títulos:</th>
+                            <td>
+                                {% if user.titulos %}
+                                    {% for titulo in user.titulos %}
+                                        <span class="badge bg-info">{{ titulo }}</span>
+                                    {% endfor %}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Rol:</th>
+                            <td>
+                                {% if user.role == 'admin' %}
+                                <span class="badge bg-danger">Administrador</span>
+                                {% elif user.role == 'director' %}
+                                <span class="badge bg-warning text-dark">Director</span>
+                                {% else %}
+                                <span class="badge bg-success">Colaborador</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Estado:</th>
+                            <td>
+                                {% if user.active %}
+                                <span class="badge bg-success">Activo</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Inactivo</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Fecha de Creación:</th>
+                            <td>
+                                {% if user.created_at %}
+                                {{ user.created_at.strftime('%d/%m/%Y %H:%M:%S') }}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Último Ingreso:</th>
+                            <td>
+                                {% if user.last_login %}
+                                {{ user.last_login.strftime('%d/%m/%Y %H:%M:%S') }}
+                                {% else %}
+                                Nunca ha ingresado
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Acciones</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        {% if user._id != current_user.get_id() %}
+                            <!-- Formulario para cambiar rol -->
+                            <form method="POST" action="{{ url_for('admin.change_user_role', user_id=user._id) }}" class="mb-3">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                <div class="mb-3">
+                                    <label for="role" class="form-label">Cambiar Rol</label>
+                                    <select name="role" id="role" class="form-select">
+                                        <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>Administrador</option>
+                                        <option value="director" {% if user.role == 'director' %}selected{% endif %}>Director</option>
+                                        <option value="colaborador" {% if user.role == 'colaborador' %}selected{% endif %}>Colaborador</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn-primary w-100">Actualizar Rol</button>
+                            </form>
+
+                            <!-- Editar usuario -->
+                            <form method="POST" action="{{ url_for('admin.edit_user', user_id=user._id) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                <button type="submit" class="btn btn-success w-100">
+                                     <i class="fas fa-edit"></i> Editar usuario
+                                </button>
+                            </form>
+
+                            <!-- Cambiar estado activo -->
+                            <form method="POST" action="{{ url_for('admin.toggle_user_active', user_id=user._id) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                <button type="submit" class="btn {% if user.active %}btn-warning{% else %}btn-success{% endif %} w-100 mb-2">
+                                    {% if user.active %}
+                                    <i class="fas fa-user-slash me-2"></i> Desactivar Usuario
+                                    {% else %}
+                                    <i class="fas fa-user-check me-2"></i> Activar Usuario
+                                    {% endif %}
+                                </button>
+                            </form>
+                            
+                            <!-- Restablecer contraseña -->
+                            <form method="POST" action="{{ url_for('admin.reset_user_password', user_id=user._id) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                <button type="submit" class="btn btn-info w-100 mb-2">
+                                    <i class="fas fa-key me-2"></i> Restablecer Contraseña
+                                </button>
+                            </form>
+                            
+                            <!-- Eliminar usuario -->
+                            <form method="POST" action="{{ url_for('admin.delete_user', user_id=user._id) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                <button type="submit" class="btn btn-danger w-100 delete-confirm">
+                                    <i class="fas fa-trash me-2"></i> Eliminar Usuario
+                                </button>
+                            </form>
+                        {% else %}
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i> No puedes modificar tu propia cuenta desde aquí.
+                                Para cambiar tu contraseña, usa la opción en el menú de usuario.
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Confirmar antes de realizar acciones destructivas
+    document.addEventListener('DOMContentLoaded', function() {
+        const deleteForm = document.querySelector('.delete-confirm');
+        if (deleteForm) {
+            deleteForm.addEventListener('submit', function(e) {
+                if (!confirm('¿Estás seguro de que deseas eliminar este usuario? Esta acción no se puede deshacer.')) {
+                    e.preventDefault();
+                }
+            });
+        }
+        
+        const resetPasswordForm = document.querySelector('form[action*="reset_user_password"]');
+        if (resetPasswordForm) {
+            resetPasswordForm.addEventListener('submit', function(e) {
+                if (!confirm('¿Estás seguro de que deseas restablecer la contraseña de este usuario?')) {
+                    e.preventDefault();
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

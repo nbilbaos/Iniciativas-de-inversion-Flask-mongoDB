@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Usuario{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Editar Usuario</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST" novalidate>
+                        {{ form.hidden_tag() }}
+
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Correo Electrónico *</label>
+                            {{ form.email(class="form-control", id="email", required=true) }}
+                            {% for error in form.email.errors %}
+                                <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="nombre" class="form-label">Nombre Completo *</label>
+                            {{ form.nombre(class="form-control", id="nombre", required=true) }}
+                            {% for error in form.nombre.errors %}
+                                <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="rut" class="form-label">RUT *</label>
+                            {{ form.rut(class="form-control", id="rut", required=true, placeholder="12.345.678-9") }}
+                            {% for error in form.rut.errors %}
+                                <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="telefono" class="form-label">Teléfono de Contacto</label>
+                                {{ form.telefono(class="form-control", id="telefono", placeholder="+56 9 1234 5678") }}
+                                {% for error in form.telefono.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="role" class="form-label">Rol *</label>
+                                {{ form.role(class="form-select", id="role", required=true) }}
+                                {% for error in form.role.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="direccion" class="form-label">Dirección</label>
+                            {{ form.direccion(class="form-control", id="direccion", placeholder="Dirección completa") }}
+                            {% for error in form.direccion.errors %}
+                                <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="titulos" class="form-label">Títulos (separados por coma)</label>
+                            {{ form.titulos(class="form-control", id="titulos", placeholder="Ingeniero Civil, MBA, Doctor en Ciencias, etc.") }}
+                            {% for error in form.titulos.errors %}
+                                <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
+                            <div class="form-text">Ingrese los títulos separados por comas</div>
+                        </div>
+
+                        <div class="mb-3 form-check">
+                            {{ form.active(class="form-check-input", id="active") }}
+                            <label class="form-check-label" for="active">Usuario Activo</label>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('admin.user_detail', user_id=user._id) }}" class="btn btn-secondary">Cancelar</a>
+                            {{ form.submit(class="btn btn-primary") }}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Script para formatear el RUT chileno correctamente
+    document.getElementById('rut').addEventListener('input', function(e) {
+        // Eliminar caracteres no deseados (sólo permitir números y K)
+        let value = this.value.replace(/[^\dkK]/g, '');
+
+        // No hacer nada si está vacío
+        if (!value) {
+            this.value = '';
+            return;
+        }
+
+        // Separar dígito verificador
+        let cuerpo = value;
+        let dv = '';
+
+        if (value.length > 1) {
+            // El último carácter es el dígito verificador
+            dv = value.charAt(value.length - 1);
+            cuerpo = value.slice(0, -1);
+
+            // Formatear cuerpo con puntos
+            if (cuerpo.length > 3) {
+                cuerpo = cuerpo.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            }
+
+            // Unir con guión
+            this.value = cuerpo + '-' + dv;
+        } else {
+            this.value = value;
+        }
+    });
+</script>
+{% endblock %}

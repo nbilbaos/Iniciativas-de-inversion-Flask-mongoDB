@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}Administrar Colaboradores{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Administrar Colaboradores</h1>
+        <div>
+            <a href="{{ url_for('director.crear_colaborador') }}" class="btn btn-primary">
+                <i class="fas fa-user-plus me-2"></i> Nuevo Colaborador
+            </a>
+            <a href="{{ url_for('director.dashboard') }}" class="btn btn-secondary ms-2">
+                <i class="fas fa-arrow-left me-2"></i> Volver
+            </a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Lista de Colaboradores</h5>
+        </div>
+        <div class="card-body">
+            {% if colaboradores %}
+            <div class="table-responsive">
+                <table class="table table-hover table-striped">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Email</th>
+                            <th>RUT</th>
+                            <th>Teléfono</th>
+                            <th>Estado</th>
+                            <th>Títulos</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for colaborador in colaboradores %}
+                        <tr>
+                            <td>{{ colaborador.nombre if colaborador.nombre else "-" }}</td>
+                            <td>{{ colaborador.email }}</td>
+                            <td>{{ colaborador.rut if colaborador.rut else "-" }}</td>
+                            <td>{{ colaborador.telefono if colaborador.telefono else "-" }}</td>
+                            <td>
+                                {% if colaborador.active %}
+                                <span class="badge bg-success">Activo</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Inactivo</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if colaborador.titulos %}
+                                    {% for titulo in colaborador.titulos %}
+                                        <span class="badge bg-info">{{ titulo }}</span>
+                                    {% endfor %}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group">
+                                    <a href="{{ url_for('director.colaborador_detail', colaborador_id=colaborador._id) }}" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-eye" title="ver detalle"></i>
+                                    </a>
+                                    <!-- Añadimos el botón de edición aquí -->
+                                    <!-- Botón de edición con la ruta corregida -->
+                                    <a href="{{ url_for('director.edit_colaborador', colaborador_id=colaborador._id) }}" class="btn btn-sm btn-info" title="Editar colaborador">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{{ url_for('director.manage_initiatives') }}" class="btn btn-sm btn-success" title="Gestionar Iniciativas">
+                                        <i class="fas fa-project-diagram"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i> No hay colaboradores registrados.
+                <a href="{{ url_for('director.crear_colaborador') }}" class="alert-link">Crear el primer colaborador</a>.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
