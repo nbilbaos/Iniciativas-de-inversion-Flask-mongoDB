@@ -3,127 +3,88 @@
 {% block title %}Mis Iniciativas{% endblock %}
 
 {% block content %}
-<div class="container py-4">
+<div class="container-fluid py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>Mis Iniciativas</h1>
+        <h1>Mis Iniciativas Asignadas</h1>
         <a href="{{ url_for('colaborador.dashboard') }}" class="btn btn-secondary">
-            <i class="fas fa-arrow-left me-2"></i> Volver al Dashboard
+            <i class="fas fa-arrow-left me-2"></i> Volver al Panel
         </a>
     </div>
 
-    {% if iniciativas %}
-    <div class="card">
-        <div class="card-header bg-primary text-white">
-            <h5 class="mb-0">Iniciativas Asignadas</h5>
-        </div>
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Iniciativa</th>
-                            <th>Estado</th>
-                            <th>Fecha Asignación</th>
-                            <th>Asignado por</th>
-                            <th>Fecha Desasignación</th>
-                            <th>Desasignado por</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for iniciativa in iniciativas %}
-                        <tr class="{% if iniciativa.activa %}table-success{% endif %}">
-                            <td>
-                                <h6 class="mb-1">{{ iniciativa.nombre }}</h6>
-                                <small class="text-muted">{{ iniciativa.descripcion }}</small>
-                            </td>
-                            <td>
-                                {% if iniciativa.activa %}
-                                <span class="badge bg-success">Activa</span>
-                                {% else %}
-                                <span class="badge bg-secondary">Inactiva</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if iniciativa.fecha_asignacion %}
-                                {{ iniciativa.fecha_asignacion.strftime('%d/%m/%Y %H:%M') }}
-                                {% else %}
-                                -
-                                {% endif %}
-                            </td>
-                            <td>
-                                {{ iniciativa.asignado_por or "-" }}
-                            </td>
-                            <td>
-                                {% if iniciativa.fecha_desasignacion %}
-                                {{ iniciativa.fecha_desasignacion.strftime('%d/%m/%Y %H:%M') }}
-                                {% else %}
-                                -
-                                {% endif %}
-                            </td>
-                            <td>
-                                {{ iniciativa.desasignado_por or "-" }}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+    {% if initiatives %}
+    <div class="row">
+        {% for item in initiatives %}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">
+                        {{ item.iniciativa.nombre_iniciativa if 'nombre_iniciativa' in item.iniciativa else 'Sin nombre' }}
+                    </h5>
+                    {% if 'cod' in item.iniciativa %}
+                    <small>Código: {{ item.iniciativa.cod }}</small>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    <p class="card-text">
+                        <strong>Estado:</strong>
+                        {% if 'estado' in item.iniciativa %}
+                            {% if item.iniciativa.estado == 'activo' %}
+                                <span class="badge bg-success">Activo</span>
+                            {% elif item.iniciativa.estado == 'inactivo' %}
+                                <span class="badge bg-secondary">Inactivo</span>
+                            {% else %}
+                                <span class="badge bg-info">{{ item.iniciativa.estado }}</span>
+                            {% endif %}
+                        {% else %}
+                            <span class="badge bg-warning">No definido</span>
+                        {% endif %}
+                    </p>
+
+                    {% if item.fecha_asignacion %}
+                    <p class="card-text">
+                        <strong>Asignado el:</strong>
+                        {{ item.fecha_asignacion.strftime('%d/%m/%Y %H:%M') }}
+                    </p>
+                    {% endif %}
+
+                    <p class="card-text">
+                        <strong>Otros colaboradores:</strong>
+                        {% if item.otros_colaboradores %}
+                            <ul class="list-unstyled mt-2">
+                            {% for colaborador in item.otros_colaboradores %}
+                                <li>
+                                    <i class="fas fa-user me-1"></i>
+                                    {{ colaborador.nombre if 'nombre' in colaborador else colaborador.email }}
+                                    {% if colaborador.role == 'director' %}
+                                        <span class="badge bg-warning">Director</span>
+                                    {% endif %}
+                                </li>
+                            {% endfor %}
+                            </ul>
+                        {% else %}
+                            <span class="text-muted">No hay otros colaboradores</span>
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="card-footer bg-transparent">
+                    <a href="{{ url_for('colaborador.view_initiative_detail', iniciativa_id=item.iniciativa._id) }}"
+                       class="btn btn-primary btn-sm me-2">
+                        <i class="fas fa-eye me-1"></i> Ver Detalles
+                    </a>
+                    <a href="{{ url_for('colaborador.edit_initiative', iniciativa_id=item.iniciativa._id) }}"
+                       class="btn btn-info btn-sm">
+                        <i class="fas fa-edit me-1"></i> Editar
+                    </a>
+                </div>
             </div>
         </div>
+        {% endfor %}
     </div>
     {% else %}
     <div class="alert alert-info">
-        <i class="fas fa-info-circle me-2"></i> No tienes iniciativas asignadas actualmente.
+        <i class="fas fa-info-circle me-2"></i>
+        No tienes iniciativas asignadas actualmente.
     </div>
     {% endif %}
-    
-    <div class="row mt-4">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header bg-info text-white">
-                    <h5 class="mb-0">Información</h5>
-                </div>
-                <div class="card-body">
-                    <p>En esta sección puedes ver todas las iniciativas que te han sido asignadas:</p>
-                    <ul>
-                        <li>Las iniciativas <strong>activas</strong> aparecen resaltadas en verde</li>
-                        <li>Puedes ver quién te asignó cada iniciativa y cuándo</li>
-                        <li>También puedes ver el historial de iniciativas inactivas o desasignadas</li>
-                    </ul>
-                    <p class="mb-0 text-muted"><i class="fas fa-lightbulb me-2"></i> Un director puede asignarte nuevas iniciativas cuando sea necesario.</p>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-6">
-            <div class="card h-100">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">Iniciativas Activas</h5>
-                </div>
-                <div class="card-body">
-                    {% if iniciativas|selectattr('activa')|list %}
-                    <div class="list-group">
-                        {% for iniciativa in iniciativas %}
-                        {% if iniciativa.activa %}
-                        <div class="list-group-item">
-                            <div class="d-flex w-100 justify-content-between">
-                                <h5 class="mb-1">{{ iniciativa.nombre }}</h5>
-                                <small>Asignada: {{ iniciativa.fecha_asignacion.strftime('%d/%m/%Y') if iniciativa.fecha_asignacion else '-' }}</small>
-                            </div>
-                            <p class="mb-1">{{ iniciativa.descripcion }}</p>
-                            <small class="text-muted">Asignada por: {{ iniciativa.asignado_por or "No especificado" }}</small>
-                        </div>
-                        {% endif %}
-                        {% endfor %}
-                    </div>
-                    {% else %}
-                    <div class="text-center py-4">
-                        <i class="fas fa-folder-open fa-3x text-muted mb-3"></i>
-                        <p>No tienes iniciativas activas actualmente.</p>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
 {% endblock %}

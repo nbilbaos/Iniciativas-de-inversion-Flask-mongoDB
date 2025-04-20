@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Iniciativa{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Editar Iniciativa</h1>
+        <a href="{{ url_for('colaborador.view_initiative_detail', iniciativa_id=iniciativa_id) }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-2"></i> Volver
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        {{ initiative.nombre_iniciativa if 'nombre_iniciativa' in initiative else 'Iniciativa sin nombre' }}
+                        {% if 'cod' in initiative %}
+                        <small>({{ initiative.cod }})</small>
+                        {% endif %}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Como colaborador, solo puedes editar ciertos campos de la iniciativa.
+                    </div>
+
+                    <form method="POST" action="{{ url_for('colaborador.edit_initiative', iniciativa_id=iniciativa_id) }}">
+                        <!-- Solución alternativa para CSRF token -->
+                        {% if config['WTF_CSRF_ENABLED'] %}
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is callable else g.csrf_token }}" />
+                        {% endif %}
+
+                        {% for field, value in editable_fields.items() %}
+                        <div class="mb-3">
+                            <label for="{{ field }}" class="form-label">
+                                {{ field.replace('_', ' ').capitalize() }}
+                            </label>
+
+                            {% if field == 'estado' %}
+                            <select class="form-select" id="{{ field }}" name="{{ field }}">
+                                <option value="activo" {% if value == 'activo' %}selected{% endif %}>Activo</option>
+                                <option value="inactivo" {% if value == 'inactivo' %}selected{% endif %}>Inactivo</option>
+                                <option value="en_progreso" {% if value == 'en_progreso' %}selected{% endif %}>En Progreso</option>
+                                <option value="completado" {% if value == 'completado' %}selected{% endif %}>Completado</option>
+                            </select>
+
+                            {% elif field == 'avance' %}
+                            <input type="number" class="form-control" id="{{ field }}" name="{{ field }}"
+                                   value="{{ value or 0 }}" min="0" max="100" step="1">
+                            <div class="form-text">Indica el porcentaje de avance (0-100)</div>
+
+                            {% elif field == 'comentarios' %}
+                            <textarea class="form-control" id="{{ field }}" name="{{ field }}" rows="4">{{ value or '' }}</textarea>
+
+                            {% else %}
+                            <input type="text" class="form-control" id="{{ field }}" name="{{ field }}" value="{{ value or '' }}">
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+
+                        <div class="d-flex justify-content-end">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i> Guardar Cambios
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Vista previa de campos no editables -->
+            <div class="card mt-4">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">Campos No Editables</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for key, value in initiative.items() %}
+                            {% if key != '_id' and key not in editable_fields and key != 'assigned_users' %}
+                                <div class="col-md-6 mb-3">
+                                    <strong>{{ key.replace('_', ' ').capitalize() }}:</strong>
+                                    {% if value is string or value is number %}
+                                        {{ value }}
+                                    {% elif value is mapping %}
+                                        <pre class="small">{{ value|tojson(indent=2) }}</pre>
+                                    {% elif value is iterable and value is not string %}
+                                        <ul class="mb-0">
+                                            {% for item in value %}
+                                                <li>{{ item }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    {% else %}
+                                        {{ value }}
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
