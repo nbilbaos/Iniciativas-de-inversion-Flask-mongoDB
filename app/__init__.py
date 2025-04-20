@@ -17,6 +17,8 @@ def create_app():
     # Inicializar la aplicación Flask
     app = Flask(__name__)
 
+    app.config['INITIATIVES_COLLECTION'] = 'db_metadata.iniciativas_2025'
+
     # Cargar configuración
     from .config import get_config
     app.config.from_object(get_config())
@@ -39,6 +41,15 @@ def create_app():
     csrf.init_app(app)
     login_manager.login_view = 'auth.login'
     login_manager.login_message = 'Por favor inicia sesión para acceder a esta página.'
+
+    # Crear índices para mejorar la búsqueda
+    with app.app_context():
+        collection_name = app.config['INITIATIVES_COLLECTION']
+        parts = collection_name.split('.')
+        if len(parts) > 1:
+            mongo.db[parts[0]][parts[1]].create_index([('nombre_iniciativa', 'text'), ('cod', 'text')])
+        else:
+            mongo.db[collection_name].create_index([('nombre_iniciativa', 'text'), ('cod', 'text')])
 
     # Configurar el cargador de usuarios para Flask-Login
     from .models.user import User
@@ -93,6 +104,18 @@ def create_app():
             print(f"Error al crear usuario admin: {str(e)}")
             print("¿Está MongoDB en ejecución y configurado correctamente?")
 
+
+    # En app/__init__.py o en un archivo de setup
+    with app.app_context():
+        # Índices para iniciativas
+        mongo.db.db_metadata.iniciativas.create_index([("nombre", 1)])
+        mongo.db.db_metadata.iniciativas.create_index([("codigo", 1)])
+
+        # Índices para historiales
+        mongo.db.assignment_history.create_index([("initiative_id", 1)])
+        mongo.db.assignment_history.create_index([("timestamp", -1)])
+        mongo.db.modification_history.create_index([("initiative_id", 1)])
+        mongo.db.modification_history.create_index([("timestamp", -1)])
 
     # Registrar procesador de contexto para CSRF
     @app.context_processor
