@@ -1,3 +1,4 @@
+#app/director/routes.py
 from flask import (
     render_template, redirect, url_for,
     flash, request, current_app
@@ -18,9 +19,52 @@ from ..models.user import User
 @director_required
 def dashboard():
     """Dashboard para el rol de director."""
-    colaboradores = mongo.db.users.count_documents({"role": "colaborador"})
-    stats = {'colaboradores': colaboradores}
-    return render_template('director/dashboard.html', stats=stats)
+    try:
+        # Obtener estadísticas de colaboradores
+        colaboradores = mongo.db.users.count_documents({"role": "colaborador"})
+
+        # Obtener iniciativas en progreso (estado distinto a "No Iniciado")
+        collection_name = current_app.config['INITIATIVES_COLLECTION']
+        parts = collection_name.split('.')
+        if len(parts) > 1:
+            coll = mongo.db[parts[0]][parts[1]]
+        else:
+            coll = mongo.db[collection_name]
+
+        iniciativas_activas = list(coll.find({
+            "estado": {"$ne": "No Iniciado"}
+        }).sort("ultimo_cambio_estado", -1).limit(5))
+
+        # Contar total de iniciativas por estado
+        pipeline = [
+            {"$match": {"estado": {"$exists": True}}},
+            {"$group": {"_id": "$estado", "count": {"$sum": 1}}}
+        ]
+        estados_count = list(coll.aggregate(pipeline))
+
+        # Crear diccionario de conteo por estado
+        conteo_estados = {}
+        for estado in estados_count:
+            conteo_estados[estado["_id"]] = estado["count"]
+
+        stats = {
+            'colaboradores': colaboradores,
+            'total_iniciativas': coll.count_documents({}),
+            'iniciativas_activas': len(iniciativas_activas),
+            'conteo_estados': conteo_estados
+        }
+
+        return render_template(
+            'director/dashboard.html',
+            stats=stats,
+            iniciativas_activas=iniciativas_activas
+        )
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"Error en dashboard: {error_details}")
+        flash(f'Error al cargar el dashboard: {e}', 'danger')
+        return render_template('director/dashboard.html', stats={})
 
 
 @director_bp.route('/profile')
@@ -245,9 +289,13 @@ def list_initiatives():
         if search:
             filt['$or'] = [
                 {'nombre_iniciativa': {'$regex': search, '$options': 'i'}},
-                {'cod': {'$regex': search, '$options': 'i'}}
+                {'nombre': {'$regex': search, '$options': 'i'}},
+                {'cod': {'$regex': search, '$options': 'i'}},
+                {'codigo': {'$regex': search, '$options': 'i'}}
             ]
-        if status == 'active':
+        if status:
+            filt['estado'] = status
+        elif status == 'active':
             filt['estado'] = 'activo'
         elif status == 'inactive':
             filt['estado'] = 'inactivo'
@@ -256,32 +304,22 @@ def list_initiatives():
 
         # Obtener el nombre de la colección donde están las iniciativas
         collection_name = current_app.config['INITIATIVES_COLLECTION']
-        print(f"DEBUG - Nombre de colección: {collection_name}")
 
-        coll = mongo.db[collection_name]
 
-        # Verificar que la colección existe y contiene documentos
-        all_documents = list(coll.find().limit(3))
-        print(f"DEBUG - Muestra de documentos en la colección: {all_documents}")
-
-        # Verificar estructura de los documentos
-        if all_documents:
-            sample_doc = all_documents[0]
-            print(f"DEBUG - Estructura del primer documento: {sample_doc.keys()}")
-            if 'nombre' in sample_doc:
-                print(f"DEBUG - Campo 'nombre' ejemplo: {sample_doc['nombre']}")
-            if 'codigo' in sample_doc:
-                print(f"DEBUG - Campo 'codigo' ejemplo: {sample_doc['codigo']}")
-            if 'estado' in sample_doc:
-                print(f"DEBUG - Campo 'estado' ejemplo: {sample_doc['estado']}")
+        # Verificar si collection_name contiene un punto (subcollection)
+        if '.' in collection_name:
+            parts = collection_name.split('.')
+            if len(parts) > 1:
+                coll = mongo.db[parts[0]][parts[1]]
+            else:
+                coll = mongo.db[collection_name]
+        else:
+            coll = mongo.db[collection_name]
 
         # Ejecutar la consulta con el filtro
         total = coll.count_documents(filt)
-        print(f"DEBUG - Total de documentos encontrados con filtro: {total}")
-
-        iniciativas = list(coll.find(filt).skip(skip).limit(per_page))
-        print(f"DEBUG - Iniciativas encontradas: {len(iniciativas)}")
-        # Fin de depuración
+        #iniciativas = list(coll.find(filt).skip(skip).limit(per_page))
+        iniciativas = list(coll.find(filt).sort("fecha_creacion", -1).skip(skip).limit(per_page))
 
         colaboradores = list(mongo.db.users.find({
             "role": {"$in": ["colaborador", "director"]}
@@ -299,10 +337,14 @@ def list_initiatives():
             iniciativas=iniciativas,
             colaboradores=colaboradores,
             pagination=pagination,
-            collection_name=collection_name
+            collection_name=collection_name,
+            search=search,
+            status=status
         )
     except Exception as e:
-        print(f"DEBUG - Error: {str(e)}")
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"DEBUG - Error: {error_details}")
         flash(f'Error al cargar iniciativas: {e}', 'danger')
         return redirect(url_for('director.dashboard'))
 
@@ -329,12 +371,29 @@ def view_initiative(iniciativa_id):
 
         assigned = iniciativa.get('assigned_users') or []
         assigned_users = list(mongo.db.users.find({
-            "_id": {"$in": [ObjectId(u) for u in assigned]}
+            "_id": {"$in": [ObjectId(u) for u in assigned if u]}
         })) if assigned else []
 
         history = list(mongo.db.assignment_history.find(
             {"initiative_id": iniciativa_id}
         ).sort("timestamp", -1))
+
+        # Obtener historial de estados
+        try:
+            estados_historial = list(mongo.db.estado_iniciativa_historial.find(
+                {"initiative_id": str(iniciativa_id)}
+            ).sort("timestamp", -1))
+        except Exception as e:
+            print(f"Error al obtener historial de estados: {e}")
+            estados_historial = []
+
+        # Lista de estados válidos para el selector
+        estados_validos = [
+            'No Iniciado', 'Formulación', 'Revisión', 'Corrección',
+            'Elegible', 'Financiado', 'Firma Convenio', 'Preparación Bases',
+            'Licitación', 'Adjudicación', 'Firma Contrato', 'Entregado',
+            'En Ejecución', 'Finalizado'
+        ]
 
         return render_template(
             'director/view_initiative.html',
@@ -342,13 +401,17 @@ def view_initiative(iniciativa_id):
             colaboradores=colaboradores,
             assigned_users=assigned_users,
             assignments_history=history,
-            collection_name=collection_name
+            collection_name=collection_name,
+            iniciativa_id=str(iniciativa_id),  # Aseguramos que sea string
+            estados_historial=estados_historial,
+            estados_validos=estados_validos
         )
     except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"Error detallado: {error_details}")
         flash(f'Error al ver iniciativa: {e}', 'danger')
         return redirect(url_for('director.list_initiatives'))
-
-
 @director_bp.route('/iniciativas/<iniciativa_id>/edit', methods=['GET', 'POST'])
 @login_required
 @director_required
@@ -546,3 +609,281 @@ def unassign_user(iniciativa_id, user_id):
     except Exception as e:
         flash(f'Error al desasignar usuario: {str(e)}', 'danger')
         return redirect(url_for('director.view_initiative', iniciativa_id=iniciativa_id))
+
+
+# Agregar estas rutas al archivo app/director/routes.py
+
+@director_bp.route('/iniciativas/nueva', methods=['GET', 'POST'])
+@login_required
+@director_required
+def crear_iniciativa():
+    """Crear una nueva iniciativa."""
+    print("DEBUG: Iniciando función crear_iniciativa")
+    try:
+        print("DEBUG: Obteniendo collection_name")
+        collection_name = current_app.config['INITIATIVES_COLLECTION']
+        print(f"DEBUG: collection_name = {collection_name}")
+
+        print("DEBUG: Accediendo a la colección")
+        coll = mongo.db[collection_name]
+
+        print("DEBUG: Buscando documentos de muestra")
+        # Obtener muestra de documentos para detectar estructura
+        sample_docs = list(coll.find().limit(1))
+        print(f"DEBUG: Encontrados {len(sample_docs)} documentos de muestra")
+
+        # Si hay iniciativas existentes, usamos sus campos como plantilla
+        fields = []
+        if sample_docs:
+            print("DEBUG: Usando estructura de documentos existentes")
+            # Excluimos campos internos y técnicos
+            excluded_fields = ['_id', 'estado', 'assigned_users', 'descripcion']
+
+            # Recorrer los campos del primer documento
+            for key in sample_docs[0].keys():
+                print(f"DEBUG: Procesando campo {key}")
+                if key not in excluded_fields:
+                    fields.append({
+                        'name': key,
+                        'label': key.replace('_', ' ').capitalize(),
+                        'type': 'text',
+                        'required': True
+                    })
+        else:
+            print("DEBUG: Usando estructura predeterminada")
+            # Si no hay iniciativas, definimos campos mínimos predeterminados
+            fields = [
+                {'name': 'nombre', 'label': 'Nombre de la iniciativa', 'type': 'text', 'required': True},
+                {'name': 'codigo', 'label': 'Código', 'type': 'text', 'required': True},
+                {'name': 'monto', 'label': 'Monto (CLP)', 'type': 'number', 'required': True},
+                {'name': 'fecha_inicio', 'label': 'Fecha de inicio', 'type': 'date', 'required': False}
+            ]
+
+        print(f"DEBUG: Campos definidos: {fields}")
+
+        if request.method == 'POST':
+            print("DEBUG: Procesando solicitud POST")
+            # Recopilar todos los campos del formulario
+            iniciativa_data = {}
+
+            print("DEBUG: Recorriendo campos del formulario")
+            for key in request.form:
+                print(f"DEBUG: Campo del formulario: {key}")
+                if key != 'csrf_token' and key != 'submit' and key != 'descripcion':
+                    value = request.form.get(key)
+                    print(f"DEBUG: Asignando {key} = {value}")
+                    iniciativa_data[key] = value
+
+            print("DEBUG: Procesando campo de descripción")
+            # Agregar descripción (tratada por separado para limitar palabras)
+            descripcion = request.form.get('descripcion', '')
+            palabras = descripcion.split()
+            if len(palabras) > 200:
+                descripcion = ' '.join(palabras[:200])
+                flash('La descripción se ha limitado a 200 palabras', 'warning')
+
+            iniciativa_data['descripcion'] = descripcion
+
+            print("DEBUG: Estableciendo campos adicionales")
+            # Establecer estado inicial
+            iniciativa_data['estado'] = 'No Iniciado'
+            iniciativa_data['fecha_creacion'] = datetime.utcnow()
+            iniciativa_data['creado_por'] = current_user.get_id()
+            iniciativa_data['creado_por_email'] = current_user.email
+
+            print("DEBUG: Insertando en la base de datos")
+            # Insertar la iniciativa en la base de datos
+            result = coll.insert_one(iniciativa_data)
+
+            if result.inserted_id:
+                print(f"DEBUG: Iniciativa creada con ID: {result.inserted_id}")
+                # Registrar en el historial de estados
+                history_entry = {
+                    "initiative_id": f"{result.inserted_id}",  # Convertir explícitamente a string
+                    "estado_anterior": None,
+                    "estado_nuevo": "No Iniciado",
+                    "cambiado_por": current_user.get_id(),
+                    "cambiado_por_email": current_user.email,
+                    "timestamp": datetime.utcnow(),
+                    "comentario": "Iniciativa creada"
+                }
+
+                print("DEBUG: Registrando en historial de estados")
+                mongo.db.estado_iniciativa_historial.insert_one(history_entry)
+
+                print("DEBUG: Redirección a view_initiative")
+                flash('Iniciativa creada exitosamente', 'success')
+                return redirect(url_for('director.view_initiative', iniciativa_id=f"{result.inserted_id}"))
+            else:
+                print("DEBUG: Error al insertar en la base de datos")
+                flash('Error al crear la iniciativa', 'danger')
+        else:
+            print("DEBUG: Método GET, mostrando formulario")
+
+        print("DEBUG: Renderizando plantilla crear_iniciativa.html")
+        return render_template(
+            'director/crear_iniciativa.html',
+            fields=fields
+        )
+
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"DEBUG: Error detallado: {error_details}")
+        flash(f'Error al crear iniciativa: {str(e)}', 'danger')
+        return redirect(url_for('director.list_initiatives'))
+
+
+@director_bp.route('/iniciativas/<iniciativa_id>/cambiar-estado', methods=['POST'])
+@login_required
+@director_required
+def cambiar_estado_iniciativa(iniciativa_id):
+    """Cambiar el estado de una iniciativa."""
+    try:
+        collection_name = current_app.config['INITIATIVES_COLLECTION']
+        coll = mongo.db[collection_name]
+
+        iniciativa = coll.find_one({"_id": ObjectId(iniciativa_id)})
+        if not iniciativa:
+            flash('Iniciativa no encontrada', 'danger')
+            return redirect(url_for('director.list_initiatives'))
+
+        nuevo_estado = request.form.get('nuevo_estado')
+        comentario = request.form.get('comentario', '')
+
+        # Lista de estados válidos
+        estados_validos = [
+            'No Iniciado', 'Formulación', 'Revisión', 'Corrección',
+            'Elegible', 'Financiado', 'Firma Convenio', 'Preparación Bases',
+            'Licitación', 'Adjudicación', 'Firma Contrato', 'Entregado',
+            'En Ejecución', 'Finalizado'
+        ]
+
+        # Validar que el estado sea válido
+        if nuevo_estado not in estados_validos:
+            flash('Estado no válido', 'danger')
+            return redirect(url_for('director.view_initiative', iniciativa_id=iniciativa_id))
+
+        estado_anterior = iniciativa.get('estado', 'No Iniciado')
+
+        # Verificar si el estado realmente cambió
+        if estado_anterior == nuevo_estado:
+            flash('El estado no ha cambiado', 'info')
+            return redirect(url_for('director.view_initiative', iniciativa_id=iniciativa_id))
+
+        # Actualizar el estado de la iniciativa
+        result = coll.update_one(
+            {"_id": ObjectId(iniciativa_id)},
+            {"$set": {
+                "estado": nuevo_estado,
+                "ultimo_cambio_estado": datetime.utcnow(),
+                "estado_cambiado_por": current_user.get_id()
+            }}
+        )
+
+        # Registrar en el historial de estados
+        history_entry = {
+            "initiative_id": iniciativa_id,
+            "estado_anterior": estado_anterior,
+            "estado_nuevo": nuevo_estado,
+            "cambiado_por": current_user.get_id(),
+            "cambiado_por_email": current_user.email,
+            "timestamp": datetime.utcnow(),
+            "comentario": comentario
+        }
+
+        mongo.db.estado_iniciativa_historial.insert_one(history_entry)
+
+        if result.modified_count > 0:
+            flash(f'Estado cambiado de "{estado_anterior}" a "{nuevo_estado}"', 'success')
+        else:
+            flash('No se pudo actualizar el estado', 'warning')
+
+        return redirect(url_for('director.view_initiative', iniciativa_id=iniciativa_id))
+
+    except Exception as e:
+        flash(f'Error al cambiar estado: {str(e)}', 'danger')
+        return redirect(url_for('director.view_initiative', iniciativa_id=iniciativa_id))
+
+
+@director_bp.route('/iniciativas/actualizar-masivo', methods=['POST'])
+@login_required
+@director_required
+def actualizar_iniciativas_masivo():
+    """Actualizar masivamente el estado de las iniciativas."""
+    try:
+        nuevo_estado = request.form.get('nuevo_estado')
+        filtro = request.form.get('filtro', '{}')  # JSON con filtros
+
+        # Validar estado
+        estados_validos = [
+            'No Iniciado', 'Formulación', 'Revisión', 'Corrección',
+            'Elegible', 'Financiado', 'Firma Convenio', 'Preparación Bases',
+            'Licitación', 'Adjudicación', 'Firma Contrato', 'Entregado',
+            'En Ejecución', 'Finalizado'
+        ]
+
+        if nuevo_estado not in estados_validos:
+            flash('Estado no válido', 'danger')
+            return redirect(url_for('director.list_initiatives'))
+
+        # Convertir filtro de JSON
+        import json
+        try:
+            filtro_dict = json.loads(filtro)
+        except:
+            filtro_dict = {}  # Filtro vacío = todas las iniciativas
+
+        # Obtener colección
+        collection_name = current_app.config['INITIATIVES_COLLECTION']
+        if '.' in collection_name:
+            parts = collection_name.split('.')
+            if len(parts) > 1:
+                coll = mongo.db[parts[0]][parts[1]]
+            else:
+                coll = mongo.db[collection_name]
+        else:
+            coll = mongo.db[collection_name]
+
+        # Obtener IDs de iniciativas a actualizar para historial
+        iniciativas = list(coll.find(filtro_dict, {"_id": 1, "estado": 1}))
+
+        # Actualizar todas las iniciativas que cumplan el filtro
+        resultado = coll.update_many(
+            filtro_dict,
+            {
+                "$set": {
+                    "estado": nuevo_estado,
+                    "ultimo_cambio_estado": datetime.utcnow(),
+                    "estado_cambiado_por": current_user.get_id()
+                }
+            }
+        )
+
+        # Registrar en historial de cambios
+        for iniciativa in iniciativas:
+            iniciativa_id = str(iniciativa["_id"])
+            estado_anterior = iniciativa.get("estado", "No Iniciado")
+
+            if estado_anterior != nuevo_estado:
+                historial = {
+                    "initiative_id": iniciativa_id,
+                    "estado_anterior": estado_anterior,
+                    "estado_nuevo": nuevo_estado,
+                    "cambiado_por": current_user.get_id(),
+                    "cambiado_por_email": current_user.email,
+                    "timestamp": datetime.utcnow(),
+                    "comentario": "Actualización masiva de estado"
+                }
+                mongo.db.estado_iniciativa_historial.insert_one(historial)
+
+        flash(f'Se actualizaron {resultado.modified_count} iniciativas al estado "{nuevo_estado}"', 'success')
+        return redirect(url_for('director.list_initiatives'))
+
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"Error en actualización masiva: {error_details}")
+        flash(f'Error al actualizar iniciativas: {e}', 'danger')
+        return redirect(url_for('director.list_initiatives'))
+

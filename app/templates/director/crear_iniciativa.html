@@ -1,0 +1,103 @@
+{# app/templates/director/crear_iniciativa.html - Versión corregida #}
+{% extends "base.html" %}
+
+{% block title %}Nueva Iniciativa{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('director.dashboard') }}">Panel</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('director.list_initiatives') }}">Iniciativas</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Nueva Iniciativa</li>
+        </ol>
+    </nav>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0"><i class="fas fa-plus-circle me-2"></i>Crear Nueva Iniciativa</h4>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('director.crear_iniciativa') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">{#así está bien declarado el token, no modificarlo#}
+
+                <div class="row mb-4">
+                    <div class="col-12">
+
+                    </div>
+                </div>
+
+                <div class="row">
+                    {% for field in fields %}
+                    <div class="col-md-6 mb-3">
+                        <div class="form-group">
+                            <label for="{{ field.name }}">
+                                {{ field.label }}
+
+                            </label>
+                            <input
+                                type="{{ field.type }}"
+                                class="form-control"
+                                id="{{ field.name }}"
+                                name="{{ field.name }}"
+
+                            >
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="row mt-2">
+                    <div class="col-12">
+                        <div class="form-group">
+                            <label for="descripcion">Descripción de la iniciativa (máximo 200 palabras) *</label>
+                            <textarea
+                                class="form-control"
+                                id="descripcion"
+                                name="descripcion"
+                                rows="5"
+                                required
+                            ></textarea>
+                            <small class="text-muted" id="word-counter">0 palabras de 200 máximo</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('director.list_initiatives') }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Volver
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>Guardar Iniciativa
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const descripcion = document.getElementById('descripcion');
+        const wordCounter = document.getElementById('word-counter');
+
+        descripcion.addEventListener('input', function() {
+            const words = this.value.trim().split(/\s+/);
+            const wordCount = this.value.trim() === '' ? 0 : words.length;
+            wordCounter.textContent = wordCount + ' palabras de 200 máximo';
+
+            if (wordCount > 200) {
+                wordCounter.classList.add('text-danger');
+                wordCounter.classList.remove('text-muted');
+            } else {
+                wordCounter.classList.remove('text-danger');
+                wordCounter.classList.add('text-muted');
+            }
+        });
+    });
+</script>
+{% endblock %}

@@ -76,8 +76,17 @@ def create_app():
     from .admin import admin_bp
     app.register_blueprint(admin_bp)
 
-    from .director import director_bp
+    #from .director import director_bp
+    #app.register_blueprint(director_bp)
+
+    # En app/__init__.py después de registrar el blueprint
+    from .director import director_bp, init_app as init_director
+
     app.register_blueprint(director_bp)
+    init_director(app)
+
+
+
 
     from .colaborador import colaborador_bp
     app.register_blueprint(colaborador_bp)

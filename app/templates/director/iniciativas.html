@@ -4,15 +4,36 @@
 
 {% block content %}
 <div class="container-fluid py-4">
+    <!-- Encabezado con título y botones principales -->
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>Gestión de Iniciativas</h1>
+        <div>
+            <h1>Gestión de Iniciativas</h1>
+            {% if status %}
+            <div class="mt-2">
+                <span class="badge bg-info text-dark p-2">
+                    <i class="fas fa-filter me-1"></i>
+                    Filtrando por estado: <strong>{{ status }}</strong>
+                    <a href="{{ url_for('director.list_initiatives') }}" class="ms-2 text-dark" title="Quitar filtro">
+                        <i class="fas fa-times-circle"></i>
+                    </a>
+                </span>
+            </div>
+            {% endif %}
+        </div>
         <div>
             <a href="{{ url_for('director.dashboard') }}" class="btn btn-secondary">
                 <i class="fas fa-arrow-left me-2"></i> Volver
             </a>
+            <a href="{{ url_for('director.crear_iniciativa') }}" class="btn btn-primary">
+                <i class="fas fa-plus-circle me-2"></i>Nueva Iniciativa
+            </a>
+            <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#masiveUpdateModal">
+                <i class="fas fa-sync-alt me-2"></i>Actualización Masiva
+            </button>
         </div>
     </div>
 
+    <!-- Tarjeta principal con filtros y tabla -->
     <div class="card">
         <div class="card-header bg-primary text-white">
             <div class="d-flex justify-content-between align-items-center">
@@ -25,18 +46,23 @@
         <div class="card-body">
             <!-- Filtros de búsqueda -->
             <div class="mb-4">
-                <form class="row g-3" method="GET">
+                <form class="row g-3" method="GET" action="{{ url_for('director.list_initiatives') }}">
                     <div class="col-md-4">
                         <input type="text" class="form-control" name="search" placeholder="Buscar por nombre o código..." value="{{ request.args.get('search', '') }}">
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-4">
                         <select class="form-select" name="status">
                             <option value="">Estado (Todos)</option>
-                            <option value="active" {% if request.args.get('status') == 'active' %}selected{% endif %}>Activas</option>
-                            <option value="inactive" {% if request.args.get('status') == 'inactive' %}selected{% endif %}>Inactivas</option>
+                            <!-- Lista completa de estados -->
+                            {% set estados = ['No Iniciado', 'Formulación', 'Revisión', 'Corrección', 'Elegible', 'Financiado', 'Firma Convenio', 'Preparación Bases', 'Licitación', 'Adjudicación', 'Firma Contrato', 'Entregado', 'En Ejecución', 'Finalizado'] %}
+                            {% for estado in estados %}
+                                <option value="{{ estado }}" {% if request.args.get('status') == estado %}selected{% endif %}>
+                                    {{ estado }}
+                                </option>
+                            {% endfor %}
                         </select>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <button type="submit" class="btn btn-primary w-100">
                             <i class="fas fa-search me-2"></i> Buscar
                         </button>
@@ -49,6 +75,7 @@
                 </form>
             </div>
 
+            <!-- Tabla de iniciativas -->
             {% if iniciativas %}
             <div class="table-responsive">
                 <table class="table table-hover table-striped">
@@ -64,8 +91,8 @@
                     <tbody>
                         {% for iniciativa in iniciativas %}
                         <tr>
-                            <td>{{ iniciativa.cod if 'cod' in iniciativa else 'Sin código' }}</td>
-                            <td>{{ iniciativa.nombre_iniciativa if 'nombre_iniciativa' in iniciativa else 'Sin nombre' }}</td>
+                            <td>{{ iniciativa.cod if 'cod' in iniciativa else iniciativa.codigo if 'codigo' in iniciativa else 'Sin código' }}</td>
+                            <td>{{ iniciativa.nombre_iniciativa if 'nombre_iniciativa' in iniciativa else iniciativa.nombre if 'nombre' in iniciativa else 'Sin nombre' }}</td>
                             <td>
                                 {% if 'estado' in iniciativa %}
                                     {% if iniciativa.estado == 'activo' %}
@@ -79,10 +106,9 @@
                                     <span class="badge bg-warning">No definido</span>
                                 {% endif %}
                             </td>
-
                             <td>
                                 {% if 'assigned_users' in iniciativa and iniciativa.assigned_users %}
-                                    <span class="badge bg-info">{{ iniciativa.assigned_users|length }}</span>
+                                    <span class="badge bg-primary">{{ iniciativa.assigned_users|length }}</span>
                                 {% else %}
                                     <span class="badge bg-secondary">0</span>
                                 {% endif %}
@@ -95,6 +121,13 @@
                                     <a href="{{ url_for('director.edit_initiative', iniciativa_id=iniciativa._id) }}" class="btn btn-sm btn-info">
                                         <i class="fas fa-edit" title="Editar"></i>
                                     </a>
+                                    <button class="btn btn-sm btn-secondary"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#changeStatusModal"
+                                            data-iniciativa-id="{{ iniciativa._id }}"
+                                            data-iniciativa-estado="{{ iniciativa.get('estado', 'No Iniciado') }}">
+                                        <i class="fas fa-exchange-alt" title="Cambiar estado"></i>
+                                    </button>
                                 </div>
                             </td>
                         </tr>
@@ -102,20 +135,20 @@
                     </tbody>
                 </table>
             </div>
-            
+
             <!-- Paginación -->
             <nav aria-label="Paginación de iniciativas">
                 <ul class="pagination justify-content-center">
                     <li class="page-item {{ 'disabled' if pagination.page == 1 else '' }}">
                         <a class="page-link" href="{{ url_for('director.list_initiatives', page=pagination.page-1, search=request.args.get('search', ''), status=request.args.get('status', '')) if pagination.page > 1 else '#' }}">Anterior</a>
                     </li>
-                    
+
                     {% for page in range(1, pagination.pages + 1) %}
                     <li class="page-item {{ 'active' if page == pagination.page else '' }}">
                         <a class="page-link" href="{{ url_for('director.list_initiatives', page=page, search=request.args.get('search', ''), status=request.args.get('status', '')) }}">{{ page }}</a>
                     </li>
                     {% endfor %}
-                    
+
                     <li class="page-item {{ 'disabled' if pagination.page == pagination.pages else '' }}">
                         <a class="page-link" href="{{ url_for('director.list_initiatives', page=pagination.page+1, search=request.args.get('search', ''), status=request.args.get('status', '')) if pagination.page < pagination.pages else '#' }}">Siguiente</a>
                     </li>
@@ -129,4 +162,107 @@
         </div>
     </div>
 </div>
+
+<!-- Modal para Actualización Masiva -->
+<div class="modal fade" id="masiveUpdateModal" tabindex="-1" aria-labelledby="masiveUpdateModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form action="{{ url_for('director.actualizar_iniciativas_masivo') }}" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="filtro" value="{{ '{}' if not status else '{\"estado\":\"' + status + '\"}' }}">
+
+        <div class="modal-header">
+          <h5 class="modal-title" id="masiveUpdateModalLabel">Actualización Masiva de Iniciativas</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <strong>¡Atención!</strong> Esta acción cambiará el estado de
+            {% if status %}
+              todas las iniciativas actualmente en estado "{{ status }}".
+            {% else %}
+              todas las iniciativas.
+            {% endif %}
+          </div>
+
+          <div class="form-group mb-3">
+            <label for="nuevo_estado">Nuevo estado para las iniciativas:</label>
+            <select class="form-select" id="nuevo_estado" name="nuevo_estado" required>
+              <option value="" disabled selected>-- Seleccionar estado --</option>
+              {% set estados = ['No Iniciado', 'Formulación', 'Revisión', 'Corrección', 'Elegible', 'Financiado', 'Firma Convenio', 'Preparación Bases', 'Licitación', 'Adjudicación', 'Firma Contrato', 'Entregado', 'En Ejecución', 'Finalizado'] %}
+              {% for estado in estados %}
+                <option value="{{ estado }}">{{ estado }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-warning">Actualizar Iniciativas</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal para Cambiar Estado de una iniciativa específica -->
+<div class="modal fade" id="changeStatusModal" tabindex="-1" aria-labelledby="changeStatusModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form id="cambiarEstadoForm" action="" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="changeStatusModalLabel">Cambiar Estado de la Iniciativa</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group mb-3">
+                        <label for="nuevo_estado_individual">Seleccione el nuevo estado:</label>
+                        <select class="form-select" id="nuevo_estado_individual" name="nuevo_estado" required>
+                            <option value="" disabled selected>-- Seleccionar estado --</option>
+                            {% set estados = ['No Iniciado', 'Formulación', 'Revisión', 'Corrección', 'Elegible', 'Financiado', 'Firma Convenio', 'Preparación Bases', 'Licitación', 'Adjudicación', 'Firma Contrato', 'Entregado', 'En Ejecución', 'Finalizado'] %}
+                            {% for estado in estados %}
+                                <option value="{{ estado }}">{{ estado }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="comentario">Comentario (opcional):</label>
+                        <textarea class="form-control" id="comentario" name="comentario" rows="3"
+                                  placeholder="Ingrese un comentario sobre el cambio de estado"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Cambio</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Configurar el modal para cambiar estado de una iniciativa específica
+        const modal = document.getElementById('changeStatusModal');
+        if (modal) {
+            modal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const iniciativaId = button.getAttribute('data-iniciativa-id');
+                const estadoActual = button.getAttribute('data-iniciativa-estado');
+
+                // Actualizar la acción del formulario
+                const form = document.getElementById('cambiarEstadoForm');
+                form.action = `/director/iniciativas/${iniciativaId}/cambiar-estado`;
+
+                // Deshabilitar el estado actual en el selector
+                const select = document.getElementById('nuevo_estado_individual');
+                for (let i = 0; i < select.options.length; i++) {
+                    select.options[i].disabled = select.options[i].value === estadoActual || select.options[i].value === "";
+                }
+            });
+        }
+    });
+</script>
 {% endblock %}
