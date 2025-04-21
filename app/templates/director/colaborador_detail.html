@@ -7,7 +7,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>Detalle de Colaborador</h1>
         <div>
-            <a href="{{ url_for('director.view_initiative') }}" class="btn btn-success me-2">
+            <a href="{{ url_for('director.list_initiatives') }}" class="btn btn-success me-2">
                 <i class="fas fa-project-diagram me-2"></i> Gestionar Iniciativas
             </a>
             <a href="{{ url_for('director.colaborador_list') }}" class="btn btn-secondary">
@@ -110,27 +110,31 @@
                                     {% set active_initiatives = active_initiatives + 1 %}
                                     <div class="list-group-item">
                                         <div class="d-flex w-100 justify-content-between">
-                                            <h6 class="mb-1">{{ iniciativa.collection_name }}</h6>
+                                            {% set info = get_iniciativa_info(iniciativa.initiative_id) %}
+                                            <h6 class="mb-1">{{ info.nombre }}</h6>
                                             <small>{{ iniciativa.assigned_at.strftime('%d/%m/%Y') if iniciativa.assigned_at else '-' }}</small>
                                         </div>
-                                        <small class="text-muted">Asignado por:
-                                            {% if iniciativa.assigned_by %}
-                                                {% set assigner = get_assigner_name(iniciativa.assigned_by) %}
-                                                {{ assigner }}
-                                            {% else %}
-                                                No especificado
-                                            {% endif %}
-                                        </small>
+                                        <div class="d-flex justify-content-between align-items-center mt-2">
+                                            <small class="text-muted">
+                                                Asignado por:
+                                                {% if iniciativa.assigned_by %}
+                                                    {% set assigner = get_user_by_id(iniciativa.assigned_by) %}
+                                                    {{ assigner.email if assigner else "Desconocido" }}
+                                                {% else %}
+                                                    No especificado
+                                                {% endif %}
+                                            </small>
+                                            <a href="{{ url_for('director.view_initiative', iniciativa_id=iniciativa.initiative_id) }}"
+                                               class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-eye"></i> Ver
+                                            </a>
+                                        </div>
                                     </div>
                                 {% endif %}
                             {% endfor %}
                         </div>
 
-                        {% if active_initiatives == 0 %}
-                            <div class="alert alert-info">
-                                <i class="fas fa-info-circle me-2"></i> Este colaborador no tiene iniciativas activas asignadas.
-                            </div>
-                        {% endif %}
+
                     {% else %}
                         <div class="alert alert-info">
                             <i class="fas fa-info-circle me-2"></i> Este colaborador no tiene iniciativas asignadas.
@@ -138,7 +142,7 @@
                     {% endif %}
 
                     <div class="mt-3 text-center">
-                        <a href="{{ url_for('director.view_initiative') }}" class="btn btn-primary">
+                        <a href="{{ url_for('director.list_initiatives') }}" class="btn btn-primary">
                             <i class="fas fa-project-diagram me-2"></i> Gestionar Iniciativas
                         </a>
                     </div>
@@ -151,8 +155,8 @@
                 </div>
                 <div class="card-body">
                     <div class="d-grid gap-2">
-                        <a href="{{ url_for('director.list_initiatives') }}" class="btn btn-success">
-                            <i class="fas fa-project-diagram me-2"></i> Gestionar Iniciativas
+                        <a href="{{ url_for('director.edit_colaborador', colaborador_id=colaborador._id) }}" class="btn btn-info">
+                            <i class="fas fa-edit me-2"></i> Editar Colaborador
                         </a>
 
                         {% if colaborador.active %}
@@ -165,7 +169,7 @@
                             </button>
                         {% endif %}
 
-                        <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#resetPasswordModal">
+                        <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#resetPasswordModal">
                             <i class="fas fa-key me-2"></i> Restablecer Contraseña
                         </button>
                     </div>
@@ -182,27 +186,35 @@
         <div class="card-body">
             {% if colaborador.iniciativas %}
                 <div class="table-responsive">
+                   <!-- Reemplazar la parte de la tabla en colaborador_detail.html con este código corregido -->
+
                     <table class="table table-striped table-hover">
                         <thead>
                             <tr>
                                 <th>Iniciativa</th>
                                 <th>Estado</th>
+                                <th>Estado de la Iniciativa</th>
                                 <th>Fecha Asignación</th>
                                 <th>Asignado por</th>
                                 <th>Fecha Desasignación</th>
                                 <th>Desasignado por</th>
+                                <th>Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for iniciativa in colaborador.iniciativas %}
+                                {% set info = get_iniciativa_info(iniciativa.initiative_id) %}
                                 <tr class="{% if iniciativa.active %}table-success{% endif %}">
-                                    <td>{{ iniciativa.collection_name }}</td>
+                                    <td>{{ info.nombre }}</td>
                                     <td>
                                         {% if iniciativa.active %}
                                             <span class="badge bg-success">Activa</span>
                                         {% else %}
                                             <span class="badge bg-secondary">Inactiva</span>
                                         {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">{{ info.estado }}</span>
                                     </td>
                                     <td>
                                         {% if iniciativa.assigned_at %}
@@ -213,8 +225,8 @@
                                     </td>
                                     <td>
                                         {% if iniciativa.assigned_by %}
-                                            {% set remover = get_assigner_name(iniciativa.removed_by) %}
-                                            {{ assigner }}
+                                            {% set assigner = get_user_by_id(iniciativa.assigned_by) %}
+                                            {{ assigner.email if assigner else "Desconocido" }}
                                         {% else %}
                                             -
                                         {% endif %}
@@ -228,11 +240,17 @@
                                     </td>
                                     <td>
                                         {% if iniciativa.removed_by %}
-                                            {% set remover = colaborador._get_assigner_name(iniciativa.removed_by) %}
-                                            {{ remover }}
+                                            {% set remover = get_user_by_id(iniciativa.removed_by) %}
+                                            {{ remover.email if remover else "Desconocido" }}
                                         {% else %}
                                             -
                                         {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('director.view_initiative', iniciativa_id=iniciativa.initiative_id) }}"
+                                            class="btn btn-sm btn-primary">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
                                     </td>
                                 </tr>
                             {% endfor %}
@@ -296,7 +314,7 @@
 <div class="modal fade" id="resetPasswordModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header bg-info text-white">
+            <div class="modal-header bg-secondary text-white">
                 <h5 class="modal-title">Restablecer Contraseña</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
