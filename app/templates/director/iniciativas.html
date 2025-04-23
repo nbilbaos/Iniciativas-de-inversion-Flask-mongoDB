@@ -77,56 +77,73 @@
 
             <!-- Tabla de iniciativas -->
             {% if iniciativas %}
-            <div class="table-responsive">
-                <table class="table table-hover table-striped">
-                    <thead>
+            <!-- Fragmento para modificar la tabla en templates/director/iniciativas.html -->
+            <div class="table-responsive mt-3">
+                <table class="table table-hover table-bordered table-striped">
+                    <thead class="table-light">
                         <tr>
-                            <th>Código</th>
                             <th>Nombre</th>
+                            <th>Progreso</th>
+                            <th>Código</th>
                             <th>Estado</th>
-                            <th>Colab.</th>
+                            <th>Fecha Creación</th>
                             <th>Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for iniciativa in iniciativas %}
                         <tr>
-                            <td>{{ iniciativa.cod if 'cod' in iniciativa else iniciativa.codigo if 'codigo' in iniciativa else 'Sin código' }}</td>
-                            <td>{{ iniciativa.nombre_iniciativa if 'nombre_iniciativa' in iniciativa else iniciativa.nombre if 'nombre' in iniciativa else 'Sin nombre' }}</td>
                             <td>
-                                {% if 'estado' in iniciativa %}
-                                    {% if iniciativa.estado == 'activo' %}
-                                        <span class="badge bg-success">Activo</span>
-                                    {% elif iniciativa.estado == 'inactivo' %}
-                                        <span class="badge bg-secondary">Inactivo</span>
-                                    {% else %}
-                                        <span class="badge bg-info">{{ iniciativa.estado }}</span>
-                                    {% endif %}
-                                {% else %}
-                                    <span class="badge bg-warning">No definido</span>
-                                {% endif %}
+                                {% set nombre_iniciativa = iniciativa.get('nombre', iniciativa.get('nombre_iniciativa', 'Sin nombre')) %}
+                                <span title="{{ nombre_iniciativa }}" style="display: inline-block; max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                    {{ nombre_iniciativa }}
+                                </span>
+                            </td>
+                            <td style="width: 150px;">
+                                {% set estados = ['No Iniciado', 'Formulación', 'Revisión', 'Corrección', 'Elegible', 'Financiado', 'Firma Convenio', 'Preparación Bases', 'Licitación', 'Adjudicación', 'Firma Contrato', 'Entregado', 'En Ejecución', 'Finalizado'] %}
+                                {% set estado_actual = iniciativa.get('estado', 'No Iniciado') %}
+                                {% set indice_estado = estados.index(estado_actual) if estado_actual in estados else 0 %}
+                                {% set progreso = (indice_estado / (estados|length-1)) * 100 %}
+
+                                <div class="progress" style="height: 10px;">
+                                    <div class="progress-bar bg-success" role="progressbar"
+                                        style="width: {{ progreso }}%;"
+                                        aria-valuenow="{{ progreso }}"
+                                        aria-valuemin="0"
+                                        aria-valuemax="100"
+                                        title="{{ progreso|round }}% - {{ estado_actual }}">
+                                    </div>
+                                </div>
+                                <small class="text-muted">{{ progreso|round }}%</small>
+                            </td>
+                            <td>{{ iniciativa.get('codigo', iniciativa.get('cod', 'N/A')) }}</td>
+                            <td>
+                                <span class="badge bg-primary">{{ iniciativa.get('estado', 'No Iniciado') }}</span>
                             </td>
                             <td>
-                                {% if 'assigned_users' in iniciativa and iniciativa.assigned_users %}
-                                    <span class="badge bg-primary">{{ iniciativa.assigned_users|length }}</span>
+                                {% if iniciativa.get('fecha_creacion') %}
+                                    {{ iniciativa.get('fecha_creacion').strftime('%d/%m/%Y') }}
                                 {% else %}
-                                    <span class="badge bg-secondary">0</span>
+                                    -
                                 {% endif %}
                             </td>
                             <td>
                                 <div class="btn-group">
-                                    <a href="{{ url_for('director.view_initiative', iniciativa_id=iniciativa._id) }}" class="btn btn-sm btn-primary">
-                                        <i class="fas fa-eye" title="Ver detalle"></i>
+                                    <a href="{{ url_for('director.view_initiative', iniciativa_id=iniciativa._id) }}"
+                                       class="btn btn-sm btn-info" title="Ver detalles">
+                                        <i class="fas fa-eye"></i>
                                     </a>
-                                    <a href="{{ url_for('director.edit_initiative', iniciativa_id=iniciativa._id) }}" class="btn btn-sm btn-info">
-                                        <i class="fas fa-edit" title="Editar"></i>
+                                    <a href="{{ url_for('director.edit_initiative', iniciativa_id=iniciativa._id) }}"
+                                       class="btn btn-sm btn-warning" title="Editar">
+                                        <i class="fas fa-edit"></i>
                                     </a>
                                     <button class="btn btn-sm btn-secondary"
                                             data-bs-toggle="modal"
                                             data-bs-target="#changeStatusModal"
                                             data-iniciativa-id="{{ iniciativa._id }}"
-                                            data-iniciativa-estado="{{ iniciativa.get('estado', 'No Iniciado') }}">
-                                        <i class="fas fa-exchange-alt" title="Cambiar estado"></i>
+                                            data-iniciativa-estado="{{ iniciativa.get('estado', 'No Iniciado') }}"
+                                            title="Cambiar estado">
+                                        <i class="fas fa-exchange-alt"></i>
                                     </button>
                                 </div>
                             </td>

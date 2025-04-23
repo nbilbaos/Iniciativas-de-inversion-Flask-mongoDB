@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Verificación de Base de Datos{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Verificación de Base de Datos</h1>
+        <a href="{{ url_for('admin.dashboard') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-2"></i> Volver al Dashboard
+        </a>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Resultados de la Verificación</h5>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                Se ha verificado la estructura de la base de datos y se han creado las colecciones e índices necesarios si no existían.
+            </div>
+            
+            <h5 class="mt-4">Colecciones requeridas:</h5>
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Estado</th>
+                            <th>Descripción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for result in results %}
+                        <tr>
+                            <td>{{ result.name }}</td>
+                            <td>
+                                {% if result.status == 'created' %}
+                                <span class="badge bg-success">Creada</span>
+                                {% else %}
+                                <span class="badge bg-info">Existente</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ result.description }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <h5 class="mt-4">Todas las colecciones en la base de datos:</h5>
+            <div class="row">
+                {% for collection in existing_collections %}
+                <div class="col-md-4 mb-2">
+                    <div class="badge bg-secondary p-2">{{ collection }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0">Información</h5>
+        </div>
+        <div class="card-body">
+            <p>
+                Esta herramienta verifica que todas las colecciones necesarias para el funcionamiento del sistema estén creadas y 
+                tengan los índices adecuados. Las colecciones verificadas son:
+            </p>
+            <ul>
+                <li><strong>tasks:</strong> Almacena las tareas de las iniciativas con su estado, asignaciones e historial.</li>
+                <li><strong>users:</strong> Almacena los usuarios del sistema con sus roles y permisos.</li>
+                <li><strong>assignment_history:</strong> Registra el historial de asignaciones de iniciativas a usuarios.</li>
+                <li><strong>estado_iniciativa_historial:</strong> Registra los cambios de estado de las iniciativas.</li>
+                <li><strong>modification_history:</strong> Registra las modificaciones realizadas a las iniciativas.</li>
+            </ul>
+            <p>
+                Si necesitas reiniciar alguna colección, puedes hacerlo desde el panel de administración de MongoDB directamente.
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

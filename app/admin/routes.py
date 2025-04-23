@@ -461,3 +461,99 @@ def delete_excel_collection(db_name, collection_name):
         flash(f'Error al eliminar la colección: {str(e)}', 'danger')
 
     return redirect(url_for('admin.excel_collections'))
+
+
+# Añadir esta ruta al archivo app/admin/routes.py
+
+@admin_bp.route('/database/check', methods=['GET'])
+@login_required
+@admin_required
+def check_database():
+    """Verificar la estructura de la base de datos y crear colecciones si es necesario."""
+    try:
+        # Obtener todas las colecciones existentes
+        existing_collections = mongo.db.list_collection_names()
+
+        # Definir las colecciones requeridas y sus índices
+        required_collections = [
+            {
+                'name': 'tasks',
+                'indexes': [
+                    ('initiative_id', 1),
+                    ('created_by', 1),
+                    ('assigned_to', 1),
+                    ('is_completed', 1),
+                    ('created_at', -1)
+                ],
+                'description': 'Almacena las tareas de las iniciativas'
+            },
+            {
+                'name': 'users',
+                'indexes': [
+                    ('email', 1),
+                    ('role', 1)
+                ],
+                'description': 'Almacena los usuarios del sistema'
+            },
+            {
+                'name': 'assignment_history',
+                'indexes': [
+                    ('initiative_id', 1),
+                    ('timestamp', -1)
+                ],
+                'description': 'Almacena el historial de asignaciones de iniciativas'
+            },
+            {
+                'name': 'estado_iniciativa_historial',
+                'indexes': [
+                    ('initiative_id', 1),
+                    ('timestamp', -1)
+                ],
+                'description': 'Almacena el historial de cambios de estado de las iniciativas'
+            },
+            {
+                'name': 'modification_history',
+                'indexes': [
+                    ('initiative_id', 1),
+                    ('timestamp', -1)
+                ],
+                'description': 'Almacena el historial de modificaciones de las iniciativas'
+            }
+        ]
+
+        # Verificar y crear colecciones e índices
+        results = []
+        for coll_info in required_collections:
+            coll_name = coll_info['name']
+            coll_exists = coll_name in existing_collections
+
+            # Crear colección si no existe
+            if not coll_exists:
+                mongo.db.create_collection(coll_name)
+                results.append({
+                    'name': coll_name,
+                    'status': 'created',
+                    'description': coll_info['description']
+                })
+            else:
+                results.append({
+                    'name': coll_name,
+                    'status': 'exists',
+                    'description': coll_info['description']
+                })
+
+            # Crear índices
+            for idx in coll_info['indexes']:
+                if isinstance(idx, tuple):
+                    mongo.db[coll_name].create_index([(idx[0], idx[1])])
+                else:
+                    mongo.db[coll_name].create_index(idx)
+
+        return render_template(
+            'admin/database/check_results.html',
+            results=results,
+            existing_collections=existing_collections
+        )
+    except Exception as e:
+        flash(f'Error al verificar la base de datos: {str(e)}', 'danger')
+        return redirect(url_for('admin.dashboard'))

@@ -12,6 +12,51 @@ login_manager = LoginManager()
 csrf = CSRFProtect()
 
 
+def setup_required_collections(app, mongo):
+    """
+    Configura todas las colecciones necesarias para la aplicación.
+    Verifica si existen y las crea si son necesarias.
+    """
+    with app.app_context():
+        collections = mongo.db.list_collection_names()
+
+        # Configuración de la colección 'tasks'
+        if 'tasks' not in collections:
+            mongo.db.create_collection('tasks')
+            print('Colección "tasks" creada exitosamente')
+
+            # Índices para la colección 'tasks'
+            mongo.db.tasks.create_index([("initiative_id", 1)])
+            mongo.db.tasks.create_index([("created_by", 1)])
+            mongo.db.tasks.create_index([("assigned_to", 1)])
+            mongo.db.tasks.create_index([("is_completed", 1)])
+            mongo.db.tasks.create_index([("created_at", -1)])
+            print('Índices para la colección "tasks" creados exitosamente')
+
+        # Configuración de la colección 'assignment_history' si no existe
+        if 'assignment_history' not in collections:
+            mongo.db.create_collection('assignment_history')
+            print('Colección "assignment_history" creada exitosamente')
+            mongo.db.assignment_history.create_index([("initiative_id", 1)])
+            mongo.db.assignment_history.create_index([("timestamp", -1)])
+
+        # Configuración de la colección 'estado_iniciativa_historial' si no existe
+        if 'estado_iniciativa_historial' not in collections:
+            mongo.db.create_collection('estado_iniciativa_historial')
+            print('Colección "estado_iniciativa_historial" creada exitosamente')
+            mongo.db.estado_iniciativa_historial.create_index([("initiative_id", 1)])
+            mongo.db.estado_iniciativa_historial.create_index([("timestamp", -1)])
+
+        # Configuración de la colección 'modification_history' si no existe
+        if 'modification_history' not in collections:
+            mongo.db.create_collection('modification_history')
+            print('Colección "modification_history" creada exitosamente')
+            mongo.db.modification_history.create_index([("initiative_id", 1)])
+            mongo.db.modification_history.create_index([("timestamp", -1)])
+
+        print("Todas las colecciones necesarias han sido verificadas y configuradas.")
+
+
 def create_app():
     """Función de fábrica para crear la aplicación Flask."""
     # Inicializar la aplicación Flask
@@ -76,17 +121,10 @@ def create_app():
     from .admin import admin_bp
     app.register_blueprint(admin_bp)
 
-    #from .director import director_bp
-    #app.register_blueprint(director_bp)
-
     # En app/__init__.py después de registrar el blueprint
     from .director import director_bp, init_app as init_director
-
     app.register_blueprint(director_bp)
     init_director(app)
-
-
-
 
     from .colaborador import colaborador_bp
     app.register_blueprint(colaborador_bp)
@@ -113,7 +151,6 @@ def create_app():
             print(f"Error al crear usuario admin: {str(e)}")
             print("¿Está MongoDB en ejecución y configurado correctamente?")
 
-
     # En app/__init__.py o en un archivo de setup
     with app.app_context():
         # Índices para iniciativas
@@ -125,6 +162,28 @@ def create_app():
         mongo.db.assignment_history.create_index([("timestamp", -1)])
         mongo.db.modification_history.create_index([("initiative_id", 1)])
         mongo.db.modification_history.create_index([("timestamp", -1)])
+
+    # Verificar si existe la colección tasks y crearla si no existe
+    with app.app_context():
+        # Obtener una lista de todas las colecciones de la base de datos
+        collections = mongo.db.list_collection_names()
+
+        # Verificar si la colección tasks existe
+        if 'tasks' not in collections:
+            # Crear la colección tasks explícitamente
+            mongo.db.create_collection('tasks')
+            print('Colección "tasks" creada exitosamente')
+
+            # Crear índices para mejorar el rendimiento de consultas
+            mongo.db.tasks.create_index([("initiative_id", 1)])
+            mongo.db.tasks.create_index([("created_by", 1)])
+            mongo.db.tasks.create_index([("assigned_to", 1)])
+            mongo.db.tasks.create_index([("is_completed", 1)])
+            mongo.db.tasks.create_index([("created_at", -1)])
+
+            print('Índices para la colección "tasks" creados exitosamente')
+        else:
+            print('La colección "tasks" ya existe')
 
     # Registrar procesador de contexto para CSRF
     @app.context_processor
@@ -147,8 +206,6 @@ def create_app():
 
         return dict(get_assigner_name=get_assigner_name)
 
-
-
     # Ruta principal
     @app.route('/')
     def index():
@@ -164,8 +221,7 @@ def create_app():
         # Si no está autenticado, redirigir a la página de login
         return redirect(url_for('auth.login'))
 
+    # Configurar todas las colecciones requeridas
+    setup_required_collections(app, mongo)
+
     return app
-
-
-
-

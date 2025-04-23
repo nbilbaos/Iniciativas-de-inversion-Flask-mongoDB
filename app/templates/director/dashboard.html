@@ -1,3 +1,4 @@
+<!--pp/templates/director/dashboard.html-->
 {% extends "base.html" %}
 {% block title %}Panel de Director{% endblock %}
 {% block content %}
@@ -113,9 +114,10 @@
                                 <thead>
                                     <tr>
                                         <th>Nombre</th>
+                                        <th>Progreso</th>
                                         <th>Código</th>
                                         <th>Estado</th>
-                                        <th>Última Actualización</th>
+                                        <th>Actualizado</th>
                                         <th>Acciones</th>
                                     </tr>
                                 </thead>
@@ -123,7 +125,27 @@
                                     {% for iniciativa in iniciativas_activas %}
                                     <tr>
                                         <td>
-                                            {{ iniciativa.get('nombre', iniciativa.get('nombre_iniciativa', 'Sin nombre')) }}
+                                            {% set nombre_iniciativa = iniciativa.get('nombre', iniciativa.get('nombre_iniciativa', 'Sin nombre')) %}
+                                            <span title="{{ nombre_iniciativa }}" style="display: inline-block; max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                {{ nombre_iniciativa }}
+                                            </span>
+                                        </td>
+                                        <td style="width: 150px;">
+                                            {% set estados = ['No Iniciado', 'Formulación', 'Revisión', 'Corrección', 'Elegible', 'Financiado', 'Firma Convenio', 'Preparación Bases', 'Licitación', 'Adjudicación', 'Firma Contrato', 'Entregado', 'En Ejecución', 'Finalizado'] %}
+                                            {% set estado_actual = iniciativa.get('estado', 'No Iniciado') %}
+                                            {% set indice_estado = estados.index(estado_actual) if estado_actual in estados else 0 %}
+                                            {% set progreso = (indice_estado / (estados|length-1)) * 100 %}
+
+                                            <div class="progress" style="height: 10px;">
+                                                <div class="progress-bar bg-success" role="progressbar"
+                                                     style="width: {{ progreso }}%;"
+                                                     aria-valuenow="{{ progreso }}"
+                                                     aria-valuemin="0"
+                                                     aria-valuemax="100"
+                                                     title="{{ progreso|round }}% - {{ estado_actual }}">
+                                                </div>
+                                            </div>
+                                            <small class="text-muted">{{ progreso|round }}%</small>
                                         </td>
                                         <td>{{ iniciativa.get('codigo', iniciativa.get('cod', 'N/A')) }}</td>
                                         <td>
@@ -188,8 +210,8 @@
                         <a href="{{ url_for('director.list_initiatives') }}" class="list-group-item list-group-item-action">
                             <i class="fas fa-project-diagram me-2"></i> Gestionar Iniciativas
                         </a>
-                        <a href="{{ url_for('auth.change_password') }}" class="list-group-item list-group-item-action">
-                            <i class="fas fa-key me-2"></i> Cambiar Mi Contraseña
+                        <a href="{{ url_for('director.list_initiatives') }}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-clipboard me-2"></i> Ver tareas
                         </a>
                     </div>
                 </div>
@@ -199,7 +221,7 @@
         <div class="col-md-6">
             <div class="card">
                 <div class="card-header">
-                    <h5 class="mb-0">Información del Sistema</h5>
+                    <h5 class="mb-0">Información de Usuario</h5>
                 </div>
                 <div class="card-body">
                     <p><strong>Usuario actual:</strong> {{ current_user.email }}</p>
@@ -276,4 +298,5 @@
         }
     });
 </script>
+
 {% endblock %}

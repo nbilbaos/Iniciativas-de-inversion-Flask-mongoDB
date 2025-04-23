@@ -11,55 +11,73 @@
         </a>
     </div>
     
-    <div class="card mb-4">
-        <div class="card-body">
-            <div class="alert alert-info">
-                <div class="d-flex align-items-center">
-                    <div class="me-3">
-                        <i class="fas fa-tools fa-2x"></i>
-                    </div>
-                    <div>
-                        <h4 class="alert-heading">Módulo en Desarrollo</h4>
-                        <p class="mb-0">Esta funcionalidad se encuentra actualmente en desarrollo. Próximamente podrás ver y gestionar tus tareas desde esta sección.</p>
+    <div class="row">
+        <div class="col-12">
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Gestión de Tareas</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <div class="d-flex align-items-center">
+                            <div class="me-3">
+                                <i class="fas fa-tasks fa-2x"></i>
+                            </div>
+                            <div>
+                                <h4 class="alert-heading mb-1">Tareas de Proyectos</h4>
+                                <p class="mb-0">Aquí puedes ver todas tus tareas pendientes y completadas. Puedes crear nuevas tareas, marcarlas como completadas y gestionar tus actividades.</p>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <a href="{{ url_for('colaborador.my_tasks') }}" class="btn btn-primary">
+                                <i class="fas fa-clipboard-list me-2"></i> Ver Mis Tareas
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
-    
-    <div class="card">
-        <div class="card-header">
-            <h5 class="mb-0">Próximas Funcionalidades</h5>
-        </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-4 mb-3">
-                    <div class="feature-card p-3 border rounded">
-                        <div class="d-flex align-items-center mb-3">
-                            <i class="fas fa-list text-primary me-3 fa-2x"></i>
-                            <h5 class="mb-0">Lista de Tareas</h5>
-                        </div>
-                        <p class="text-muted">Visualiza todas tus tareas pendientes y completadas en un solo lugar.</p>
-                    </div>
+
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Características de la Gestión de Tareas</h5>
                 </div>
-                
-                <div class="col-md-4 mb-3">
-                    <div class="feature-card p-3 border rounded">
-                        <div class="d-flex align-items-center mb-3">
-                            <i class="fas fa-calendar-alt text-success me-3 fa-2x"></i>
-                            <h5 class="mb-0">Calendario</h5>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <div class="feature-card p-3 border rounded">
+                                <div class="d-flex align-items-center mb-3">
+                                    <i class="fas fa-plus-circle text-primary me-3 fa-2x"></i>
+                                    <h5 class="mb-0">Crear Tareas</h5>
+                                </div>
+                                <p class="text-muted">Crea tareas para ti o para otros colaboradores con descripciones claras y concisas.</p>
+                            </div>
                         </div>
-                        <p class="text-muted">Visualiza tus tareas en formato de calendario para una mejor organización.</p>
+
+                        <div class="col-md-4 mb-3">
+                            <div class="feature-card p-3 border rounded">
+                                <div class="d-flex align-items-center mb-3">
+                                    <i class="fas fa-check-circle text-success me-3 fa-2x"></i>
+                                    <h5 class="mb-0">Completar Tareas</h5>
+                                </div>
+                                <p class="text-muted">Marca tus tareas como completadas para hacer seguimiento de tu progreso en los proyectos.</p>
+                            </div>
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <div class="feature-card p-3 border rounded">
+                                <div class="d-flex align-items-center mb-3">
+                                    <i class="fas fa-users text-info me-3 fa-2x"></i>
+                                    <h5 class="mb-0">Trabajo en Equipo</h5>
+                                </div>
+                                <p class="text-muted">Asigna tareas a otros colaboradores para trabajar juntos en las iniciativas.</p>
+                            </div>
+                        </div>
                     </div>
-                </div>
-                
-                <div class="col-md-4 mb-3">
-                    <div class="feature-card p-3 border rounded">
-                        <div class="d-flex align-items-center mb-3">
-                            <i class="fas fa-chart-line text-warning me-3 fa-2x"></i>
-                            <h5 class="mb-0">Estadísticas</h5>
-                        </div>
-                        <p class="text-muted">Analiza tu rendimiento y productividad con gráficos detallados.</p>
+
+                    <div class="text-center mt-3">
+                        <a href="{{ url_for('colaborador.my_initiatives') }}" class="btn btn-info">
+                            <i class="fas fa-project-diagram me-2"></i> Ver Mis Iniciativas
+                        </a>
                     </div>
                 </div>
             </div>
