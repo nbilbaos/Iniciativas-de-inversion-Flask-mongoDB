@@ -368,7 +368,9 @@ def view_initiative(iniciativa_id):
             return redirect(url_for('director.list_initiatives'))
 
         colaboradores = list(mongo.db.users.find({
-            "role": {"$in": ["colaborador", "director"]}
+            "role": {"$in": ["colaborador", "director"]},
+            "active": True,
+            "_id": {"$ne": ObjectId(current_user.get_id())}  # Excluir usuario actual si es necesario
         }))
 
         assigned = iniciativa.get('assigned_users') or []
@@ -389,6 +391,27 @@ def view_initiative(iniciativa_id):
             print(f"Error al obtener historial de estados: {e}")
             estados_historial = []
 
+        # Obtener tareas de la iniciativa
+        tasks = list(mongo.db.tasks.find(
+            {"initiative_id": iniciativa_id}
+        ).sort("created_at", -1))
+
+        # Obtener información de usuarios para las tareas
+        user_ids = set()
+        for task in tasks:
+            if task.get('created_by'):
+                user_ids.add(task.get('created_by'))
+            if task.get('completed_by'):
+                user_ids.add(task.get('completed_by'))
+            if task.get('assigned_to'):
+                user_ids.update(task.get('assigned_to'))
+
+        users = {str(u['_id']): u for u in
+                mongo.db.users.find({
+                    "_id": {"$in": [ObjectId(uid) for uid in user_ids if uid]},
+                    "role": {"$ne": "admin"}  # Excluir administradores
+                })}
+
         # Lista de estados válidos para el selector
         estados_validos = [
             'No Iniciado', 'Formulación', 'Revisión', 'Corrección',
@@ -404,9 +427,11 @@ def view_initiative(iniciativa_id):
             assigned_users=assigned_users,
             assignments_history=history,
             collection_name=collection_name,
-            iniciativa_id=str(iniciativa_id),  # Aseguramos que sea string
+            iniciativa_id=str(iniciativa_id),
             estados_historial=estados_historial,
-            estados_validos=estados_validos
+            estados_validos=estados_validos,
+            tasks=tasks,  # Añadimos las tareas
+            users=users    # Añadimos la información de usuarios
         )
     except Exception as e:
         import traceback
@@ -414,6 +439,7 @@ def view_initiative(iniciativa_id):
         print(f"Error detallado: {error_details}")
         flash(f'Error al ver iniciativa: {e}', 'danger')
         return redirect(url_for('director.list_initiatives'))
+
 @director_bp.route('/iniciativas/<iniciativa_id>/edit', methods=['GET', 'POST'])
 @login_required
 @director_required
