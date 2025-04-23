@@ -492,6 +492,185 @@
         </div>
     </div>
 </div>
+{% endblock %}
+{% block extra_js %}
 
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Manejo de completar tareas
+        document.querySelectorAll('.complete-task-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const taskId = this.getAttribute('data-task-id');
+                completeTask(taskId);
+            });
+        });
+
+        // Manejo de reabrir tareas
+        document.querySelectorAll('.reopen-task-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const taskId = this.getAttribute('data-task-id');
+                reopenTask(taskId);
+            });
+        });
+
+        // Manejo de eliminar tareas
+        document.querySelectorAll('.delete-task-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                if (confirm('¿Estás seguro de que deseas eliminar esta tarea?')) {
+                    const taskId = this.getAttribute('data-task-id');
+                    deleteTask(taskId);
+                }
+            });
+        });
+
+        // Función para completar una tarea
+        function completeTask(taskId) {
+            fetch(`/director/tareas/${taskId}/completar`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Actualizar la interfaz de usuario
+                    const taskCard = document.getElementById(`task-${taskId}`);
+                    taskCard.classList.add('completed');
+
+                    // Actualizar el contenido de la tarjeta
+                    const taskContent = taskCard.querySelector('.task-content');
+                    const taskActions = taskCard.querySelector('.task-actions');
+
+                    // Añadir la etiqueta de completado
+                    const completedBadge = document.createElement('div');
+                    completedBadge.className = 'mt-2';
+                    completedBadge.innerHTML = '<span class="badge bg-success"><i class="fas fa-check me-1"></i> Completada</span>';
+                    taskContent.parentNode.insertBefore(completedBadge, taskContent.nextSibling);
+
+                    // Actualizar botones de acción
+                    taskActions.innerHTML = `
+                        <button class="btn btn-sm btn-warning reopen-task-btn" data-task-id="${taskId}">
+                            <i class="fas fa-redo-alt"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger delete-task-btn" data-task-id="${taskId}">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    `;
+
+                    // Añadir info de quién completó la tarea
+                    const taskMeta = taskCard.querySelector('.task-meta');
+                    const completedInfo = document.createElement('div');
+                    completedInfo.innerHTML = `
+                        <i class="fas fa-check-circle me-1"></i> Completada por:
+                        <strong>${data.completed_by}</strong>
+                        el ${data.completed_at}
+                    `;
+                    taskMeta.appendChild(completedInfo);
+
+                    // Recargar los listeners de eventos para los nuevos botones
+                    taskActions.querySelector('.reopen-task-btn').addEventListener('click', function() {
+                        reopenTask(taskId);
+                    });
+
+                    taskActions.querySelector('.delete-task-btn').addEventListener('click', function() {
+                        if (confirm('¿Estás seguro de que deseas eliminar esta tarea?')) {
+                            deleteTask(taskId);
+                        }
+                    });
+
+                    // Actualizar contadores de tareas
+                    updateTaskCounters();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error al completar la tarea');
+            });
+        }
+
+        // Función para reabrir una tarea
+        function reopenTask(taskId) {
+            fetch(`/director/tareas/${taskId}/reabrir`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Recargar la página para reflejar los cambios
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error al reabrir la tarea');
+            });
+        }
+
+        // Función para eliminar una tarea
+        function deleteTask(taskId) {
+            fetch(`/director/tareas/${taskId}/eliminar`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Eliminar la tarjeta de la tarea del DOM
+                    const taskCard = document.getElementById(`task-${taskId}`);
+                    taskCard.remove();
+
+                    // Actualizar contadores de tareas
+                    updateTaskCounters();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error al eliminar la tarea');
+            });
+        }
+
+        // Actualizar contadores de tareas
+        function updateTaskCounters() {
+            const pendingTasks = document.querySelectorAll('#pending-tasks .task-card').length;
+            const completedTasks = document.querySelectorAll('#completed-tasks .task-card').length;
+
+            // Actualizar las insignias con los contadores
+            const pendingBadge = document.querySelector('#pending-tab .badge');
+            const completedBadge = document.querySelector('#completed-tab .badge');
+
+            if (pendingBadge) pendingBadge.textContent = pendingTasks;
+            if (completedBadge) completedBadge.textContent = completedTasks;
+        }
+
+        // Contador de palabras para la descripción de la tarea
+        const contentEl = document.getElementById('taskContent');
+        const counterEl = document.getElementById('word-counter');
+        const submitBtn = document.getElementById('submitTask');
+
+        if (contentEl && counterEl && submitBtn) {
+            contentEl.addEventListener('input', () => {
+                const words = contentEl.value.trim().split(/\s+/).filter(w => w).length;
+                counterEl.textContent = words;
+                submitBtn.disabled = words > 200;
+                counterEl.classList.toggle('text-danger', words > 200);
+            });
+        }
+    });
+</script>
 
 {% endblock %}

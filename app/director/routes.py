@@ -1105,14 +1105,6 @@ def delete_task(task_id):
         if not task_data:
             return jsonify({"success": False, "message": "Tarea no encontrada"})
 
-        # Verificar que el usuario actual creó la tarea o es administrador
-        if (task_data.get('created_by') != current_user.get_id() and
-                not current_user.is_admin()):
-            return jsonify({
-                "success": False,
-                "message": "No tienes permiso para eliminar esta tarea"
-            })
-
         # Eliminar la tarea
         mongo.db.tasks.delete_one({"_id": ObjectId(task_id)})
 
