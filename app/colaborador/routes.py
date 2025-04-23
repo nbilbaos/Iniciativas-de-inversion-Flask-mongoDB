@@ -567,6 +567,8 @@ def view_initiative_tasks(iniciativa_id):
 
         # Obtener tareas relacionadas con esta iniciativa
         tasks = list(mongo.db.tasks.find({"initiative_id": iniciativa_id}).sort("created_at", -1))
+        tasks_by_initiative = {iniciativa_id: tasks}
+        initiatives = {iniciativa_id: iniciativa}
 
         # Obtener información de los usuarios para mostrar nombres
         user_ids = set()
@@ -590,7 +592,9 @@ def view_initiative_tasks(iniciativa_id):
         return render_template(
             'colaborador/initiative_tasks.html',
             initiative=iniciativa,
+            initiatives=initiatives,
             tasks=tasks,
+            tasks_by_initiative=tasks_by_initiative,
             users=users,
             iniciativa_id=iniciativa_id,
             other_collaborators=other_collaborators

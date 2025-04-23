@@ -924,11 +924,14 @@ def view_initiative_tasks(iniciativa_id):
                 user_ids.update(task.get('assigned_to'))
 
         users = {str(u['_id']): u for u in
-                 mongo.db.users.find({"_id": {"$in": [ObjectId(uid) for uid in user_ids if uid]}})}
+                 mongo.db.users.find({
+                     "_id": {"$in": [ObjectId(uid) for uid in user_ids if uid]},
+                     "role": {"$ne": "admin"}  # Excluir a los administradores
+                 })}
 
         return render_template(
             'director/initiative_tasks.html',
-            initiativa=iniciativa,
+            iniciativa=iniciativa,
             tasks=tasks,
             users=users,
             iniciativa_id=iniciativa_id
@@ -950,6 +953,15 @@ def create_task(iniciativa_id):
         # Obtener datos del formulario
         content = request.form.get('content', '').strip()
         assigned_users = request.form.getlist('assigned_users')
+
+        # Verificar que los usuarios asignados no sean administradores
+        if assigned_users:
+            valid_users = []
+            for user_id in assigned_users:
+                user = mongo.db.users.find_one({"_id": ObjectId(user_id)})
+                if user and user.get('role') != 'admin':
+                    valid_users.append(user_id)
+            assigned_users = valid_users
 
         # Validar contenido
         if not content:
@@ -1086,3 +1098,81 @@ def delete_task(task_id):
         import traceback
         print(f"Error al eliminar tarea: {traceback.format_exc()}")
         return jsonify({"success": False, "message": f"Error: {str(e)}"})
+
+
+@director_bp.route('/all-tasks')
+@login_required
+@director_required
+def all_collaborator_tasks():
+    """Ver todas las tareas de los colaboradores."""
+    try:
+        # Obtener todas las tareas
+        tasks = list(mongo.db.tasks.find().sort("created_at", -1))
+
+        # Obtener las iniciativas relacionadas con las tareas
+        initiative_ids = set(task.get('initiative_id') for task in tasks if task.get('initiative_id'))
+
+        # Obtener información de las iniciativas
+        collection_name = current_app.config['INITIATIVES_COLLECTION']
+        parts = collection_name.split('.')
+        if len(parts) > 1:
+            initiatives_coll = mongo.db[parts[0]][parts[1]]
+        else:
+            initiatives_coll = mongo.db[collection_name]
+
+        initiatives = {
+            str(init['_id']): init for init in initiatives_coll.find({
+                "_id": {"$in": [ObjectId(i_id) for i_id in initiative_ids if i_id]}
+            })
+        }
+
+        # Obtener información de los usuarios
+        user_ids = set()
+        for task in tasks:
+            if task.get('created_by'):
+                user_ids.add(task.get('created_by'))
+            if task.get('completed_by'):
+                user_ids.add(task.get('completed_by'))
+            if task.get('assigned_to'):
+                user_ids.update(task.get('assigned_to'))
+
+        users = {
+            str(u['_id']): u for u in mongo.db.users.find({
+                "_id": {"$in": [ObjectId(uid) for uid in user_ids if uid]},
+                "role": {"$ne": "admin"}  # Excluir a los administradores
+            })
+        }
+
+        # Agrupar tareas por iniciativa
+        tasks_by_initiative = {}
+        for task in tasks:
+            initiative_id = task.get('initiative_id')
+            if initiative_id not in tasks_by_initiative:
+                tasks_by_initiative[initiative_id] = []
+            tasks_by_initiative[initiative_id].append(task)
+
+        # Calcular estadísticas
+        total_tasks = len(tasks)
+        completed_tasks = sum(1 for task in tasks if task.get('is_completed'))
+        pending_tasks = total_tasks - completed_tasks
+
+        stats = {
+            'total_tasks': total_tasks,
+            'completed_tasks': completed_tasks,
+            'pending_tasks': pending_tasks,
+            'completion_rate': round((completed_tasks / total_tasks) * 100) if total_tasks > 0 else 0
+        }
+
+        return render_template(
+            'director/all_tasks.html',
+            tasks=tasks,
+            tasks_by_initiative=tasks_by_initiative,
+            initiatives=initiatives,
+            users=users,
+            stats=stats
+        )
+    except Exception as e:
+        import traceback
+        print(f"Error al cargar todas las tareas: {traceback.format_exc()}")
+        flash(f'Error al cargar las tareas: {str(e)}', 'danger')
+        return redirect(url_for('director.dashboard'))

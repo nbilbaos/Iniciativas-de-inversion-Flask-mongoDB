@@ -1,0 +1,365 @@
+{% extends "base.html" %}
+
+{% block title %}Todas las Tareas{% endblock %}
+
+{% block extra_css %}
+<style>
+    .task-card {
+        border-left: 4px solid #007bff;
+        transition: all 0.3s ease;
+    }
+
+    .task-card:hover {
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .task-card.completed {
+        border-left-color: #28a745;
+        background-color: rgba(40, 167, 69, 0.05);
+    }
+
+    .initiative-card {
+        border-left: 4px solid #17a2b8;
+        margin-bottom: 1.5rem;
+    }
+
+    .initiative-header {
+        background-color: rgba(23, 162, 184, 0.1);
+        padding: 10px 15px;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+    }
+
+    .task-meta {
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
+
+    .filter-card {
+        position: sticky;
+        top: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Tareas de Colaboradores</h1>
+        <div>
+            <a href="{{ url_for('director.dashboard') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i> Volver al Dashboard
+            </a>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white text-center">
+                <div class="card-body">
+                    <h6 class="card-title">Total Tareas</h6>
+                    <h2>{{ stats.total_tasks }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white text-center">
+                <div class="card-body">
+                    <h6 class="card-title">Completadas</h6>
+                    <h2>{{ stats.completed_tasks }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-dark text-center">
+                <div class="card-body">
+                    <h6 class="card-title">Pendientes</h6>
+                    <h2>{{ stats.pending_tasks }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white text-center">
+                <div class="card-body">
+                    <h6 class="card-title">% Completado</h6>
+                    <h2>{{ stats.completion_rate }}%</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-3">
+            <div class="card filter-card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Filtros</h5>
+                </div>
+                <div class="card-body">
+                    <form id="filterForm">
+                        <div class="mb-3">
+                            <label for="filterInitiative" class="form-label">Iniciativa</label>
+                            <select class="form-select" id="filterInitiative">
+                                <option value="">Todas las iniciativas</option>
+                                {% for initiative_id, initiative in initiatives.items() %}
+                                    <option value="{{ initiative_id }}">
+                                        {{ initiative.get('nombre_iniciativa', initiative.get('nombre', 'Iniciativa sin nombre')) }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="filterCollaborator" class="form-label">Colaborador</label>
+                            <select class="form-select" id="filterCollaborator">
+                                <option value="">Todos los colaboradores</option>
+                                {% for user_id, user in users.items() %}
+                                    {% if user.get('role') == 'colaborador' or user.get('role') == 'director' %}
+                                        <option value="{{ user_id }}">
+                                            {{ user.get('nombre', user.get('email', 'Usuario desconocido')) }}
+                                        </option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Estado</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="taskStatus" id="statusAll" value="all" checked>
+                                <label class="form-check-label" for="statusAll">
+                                    Todas
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="taskStatus" id="statusPending" value="pending">
+                                <label class="form-check-label" for="statusPending">
+                                    Pendientes
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="taskStatus" id="statusCompleted" value="completed">
+                                <label class="form-check-label" for="statusCompleted">
+                                    Completadas
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="button" id="clearFilters" class="btn btn-secondary">
+                                <i class="fas fa-sync-alt me-2"></i>Limpiar Filtros
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-9">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Tareas por Iniciativa</h5>
+                </div>
+                <div class="card-body">
+                    <div id="tasksContainer">
+                        {% for initiative_id, initiative_tasks in tasks_by_initiative.items() %}
+                            {% if initiative_id and initiative_id in initiatives %}
+                                <div class="initiative-group" data-initiative-id="{{ initiative_id }}">
+                                    <div class="card initiative-card">
+                                        <div class="initiative-header">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <h5 class="mb-0">
+                                                    {% set initiative = initiatives[initiative_id] %}
+                                                    <a href="{{ url_for('director.view_initiative', iniciativa_id=initiative_id) }}" class="text-decoration-none text-dark">
+                                                        {{ initiative.get('nombre_iniciativa', initiative.get('nombre', 'Iniciativa sin nombre')) }}
+                                                    </a>
+                                                    {% if initiative.get('cod') or initiative.get('codigo') %}
+                                                        <small class="text-muted">({{ initiative.get('cod', initiative.get('codigo', '')) }})</small>
+                                                    {% endif %}
+                                                </h5>
+                                                <span class="badge bg-primary">{{ initiative.get('estado', 'No iniciado') }}</span>
+                                            </div>
+                                            <div class="mt-2">
+                                                <a href="{{ url_for('director.view_initiative_tasks', iniciativa_id=initiative_id) }}" class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-tasks me-1"></i> Ver todas las tareas
+                                                </a>
+                                                <a href="{{ url_for('director.view_initiative', iniciativa_id=initiative_id) }}" class="btn btn-sm btn-outline-info">
+                                                    <i class="fas fa-info-circle me-1"></i> Detalles de la iniciativa
+                                                </a>
+                                            </div>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="tasks-list">
+                                                {% for task in initiative_tasks %}
+                                                    <div class="card task-card mb-3 {{ 'completed' if task.is_completed else '' }}" 
+                                                         data-task-id="{{ task._id }}"
+                                                         data-collaborator-ids="{{ task.assigned_to|join(',') if task.assigned_to else '' }}"
+                                                         data-status="{{ 'completed' if task.is_completed else 'pending' }}">
+                                                        <div class="card-body">
+                                                            <div class="d-flex justify-content-between align-items-start">
+                                                                <div>
+                                                                    <div class="task-content">{{ task.content }}</div>
+                                                                    {% if task.is_completed %}
+                                                                    <div class="mt-2">
+                                                                        <span class="badge bg-success">
+                                                                            <i class="fas fa-check me-1"></i> Completada
+                                                                        </span>
+                                                                    </div>
+                                                                    {% endif %}
+                                                                </div>
+                                                            </div>
+                                                            <div class="task-meta mt-3">
+                                                                <div>
+                                                                    <i class="fas fa-user me-1"></i> Creada por: 
+                                                                    <strong>
+                                                                        {% set creator = users.get(task.created_by, {}) %}
+                                                                        {{ creator.get('nombre', creator.get('email', 'Usuario desconocido')) }}
+                                                                    </strong>
+                                                                </div>
+                                                                <div>
+                                                                    <i class="fas fa-calendar me-1"></i> Fecha de creación: 
+                                                                    {{ task.created_at.strftime('%d/%m/%Y %H:%M') }}
+                                                                </div>
+                                                                {% if task.is_completed and task.completed_by %}
+                                                                <div>
+                                                                    <i class="fas fa-check-circle me-1"></i> Completada por: 
+                                                                    <strong>
+                                                                        {% set completer = users.get(task.completed_by, {}) %}
+                                                                        {{ completer.get('nombre', completer.get('email', 'Usuario desconocido')) }}
+                                                                    </strong>
+                                                                    el {{ task.completed_at.strftime('%d/%m/%Y %H:%M') }}
+                                                                </div>
+                                                                {% endif %}
+                                                                {% if task.assigned_to %}
+                                                                <div>
+                                                                    <i class="fas fa-users me-1"></i> Asignada a: 
+                                                                    {% for uid in task.assigned_to %}
+                                                                        {% set assigned_user = users.get(uid, {}) %}
+                                                                        <span class="badge bg-info">
+                                                                            {{ assigned_user.get('nombre', assigned_user.get('email', 'Usuario desconocido')) }}
+                                                                        </span>
+                                                                    {% endfor %}
+                                                                </div>
+                                                                {% endif %}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    
+                    <!-- Mensaje cuando no hay tareas -->
+                    <div id="noTasksMessage" class="alert alert-info" style="display: none;">
+                        <i class="fas fa-info-circle me-2"></i> No se encontraron tareas con los filtros seleccionados.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Elementos del formulario de filtro
+        const filterInitiative = document.getElementById('filterInitiative');
+        const filterCollaborator = document.getElementById('filterCollaborator');
+        const filterStatusAll = document.getElementById('statusAll');
+        const filterStatusPending = document.getElementById('statusPending');
+        const filterStatusCompleted = document.getElementById('statusCompleted');
+        const clearFiltersBtn = document.getElementById('clearFilters');
+        
+        // Contenedor de tareas y mensaje de no resultados
+        const tasksContainer = document.getElementById('tasksContainer');
+        const noTasksMessage = document.getElementById('noTasksMessage');
+        
+        // Función para aplicar filtros
+        function applyFilters() {
+            const selectedInitiative = filterInitiative.value;
+            const selectedCollaborator = filterCollaborator.value;
+            const selectedStatus = document.querySelector('input[name="taskStatus"]:checked').value;
+            
+            // Obtener todos los grupos de iniciativas
+            const initiativeGroups = document.querySelectorAll('.initiative-group');
+            let visibleTasks = 0;
+            let visibleGroups = 0;
+            
+            // Iterar por cada grupo de iniciativas
+            initiativeGroups.forEach(group => {
+                const initiativeId = group.getAttribute('data-initiative-id');
+                const tasks = group.querySelectorAll('.task-card');
+                
+                // Verificar si este grupo de iniciativas debe mostrarse
+                const showInitiative = !selectedInitiative || initiativeId === selectedInitiative;
+                
+                if (showInitiative) {
+                    let visibleTasksInGroup = 0;
+                    
+                    // Filtrar tareas dentro de este grupo
+                    tasks.forEach(task => {
+                        const taskStatus = task.getAttribute('data-status');
+                        const collaboratorIds = task.getAttribute('data-collaborator-ids').split(',');
+                        
+                        // Verificar si esta tarea debe mostrarse
+                        const showStatus = selectedStatus === 'all' || 
+                                          (selectedStatus === 'pending' && taskStatus === 'pending') ||
+                                          (selectedStatus === 'completed' && taskStatus === 'completed');
+                                          
+                        const showCollaborator = !selectedCollaborator || 
+                                                collaboratorIds.includes(selectedCollaborator);
+                        
+                        if (showStatus && showCollaborator) {
+                            task.style.display = '';
+                            visibleTasks++;
+                            visibleTasksInGroup++;
+                        } else {
+                            task.style.display = 'none';
+                        }
+                    });
+                    
+                    // Mostrar/ocultar el grupo según si tiene tareas visibles
+                    if (visibleTasksInGroup > 0) {
+                        group.style.display = '';
+                        visibleGroups++;
+                    } else {
+                        group.style.display = 'none';
+                    }
+                    
+                } else {
+                    // Ocultar
+                    group.style.display = 'none';
+                }
+            });
+            
+            // Mostrar mensaje si no hay tareas visibles
+            if (visibleTasks === 0) {
+                noTasksMessage.style.display = 'block';
+            } else {
+                noTasksMessage.style.display = 'none';
+            }
+        }
+        
+        // Asociar eventos a los controles de filtro
+        filterInitiative.addEventListener('change', applyFilters);
+        filterCollaborator.addEventListener('change', applyFilters);
+        filterStatusAll.addEventListener('change', applyFilters);
+        filterStatusPending.addEventListener('change', applyFilters);
+        filterStatusCompleted.addEventListener('change', applyFilters);
+        
+        // Botón para limpiar filtros
+        clearFiltersBtn.addEventListener('click', function() {
+            filterInitiative.value = '';
+            filterCollaborator.value = '';
+            filterStatusAll.checked = true;
+            applyFilters();
+        });
+        
+        // Aplicar filtros al cargar la página
+        applyFilters();
+    });
+</script>
+{% endblock %}
