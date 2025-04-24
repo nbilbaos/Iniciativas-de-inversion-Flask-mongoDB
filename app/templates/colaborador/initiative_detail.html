@@ -12,6 +12,12 @@
             {% endif %}
         </h1>
         <div>
+            <!-- Comprobar si la gestión de archivos está habilitada para la iniciativa -->
+            {% if initiative.files_enabled %}
+            <a href="{{ url_for('colaborador.view_files', iniciativa_id=initiative._id) }}" class="btn btn-info">
+                <i class="fas fa-file-alt me-2"></i> Ver Archivos
+            </a>
+            {% endif %}
             <a href="{{ url_for('colaborador.edit_initiative', iniciativa_id=initiative._id) }}" class="btn btn-info me-2">
                 <i class="fas fa-edit me-2"></i> Editar
             </a>

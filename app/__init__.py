@@ -61,13 +61,13 @@ def create_app():
     """Función de fábrica para crear la aplicación Flask."""
     # Inicializar la aplicación Flask
     app = Flask(__name__)
-
     app.config['INITIATIVES_COLLECTION'] = 'db_metadata.iniciativas_2025'
-
     # Cargar configuración
     from .config import get_config
     app.config.from_object(get_config())
-
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    os.makedirs(app.config['TEMP_UPLOADS'], exist_ok=True)
+    os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'default_files'), exist_ok=True)
     # Configuración adicional para sesiones y CSRF
     app.config['SESSION_TYPE'] = 'filesystem'
     app.config['SESSION_PERMANENT'] = False
@@ -98,6 +98,11 @@ def create_app():
 
     # Configurar el cargador de usuarios para Flask-Login
     from .models.user import User
+
+
+
+
+
 
     @login_manager.user_loader
     def load_user(user_id):

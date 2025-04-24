@@ -1,0 +1,420 @@
+{# app/templates/director/manage_files.html #}
+{% extends "base.html" %}
+
+{% block title %}Gestión de Archivos - {{ iniciativa.nombre_iniciativa or 'Iniciativa' }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .file-card {
+        transition: all 0.3s ease;
+    }
+    .file-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    .file-icon {
+        font-size: 2.5rem;
+        margin-bottom: 15px;
+    }
+    .file-icon.autocad { color: #C62828; }
+    .file-icon.pdf { color: #D32F2F; }
+    .file-icon.word { color: #1565C0; }
+    .file-icon.excel { color: #2E7D32; }
+    .file-icon.powerpoint { color: #FF8F00; }
+    .file-icon.image { color: #6A1B9A; }
+    .file-icon.compressed { color: #F9A825; }
+    .file-icon.3d { color: #00838F; }
+    .file-icon.other { color: #757575; }
+
+    .file-card-actions {
+        opacity: 0.3;
+        transition: opacity 0.2s ease;
+    }
+    .file-card:hover .file-card-actions {
+        opacity: 1;
+    }
+    
+    .history-item:not(:last-child) {
+        border-bottom: 1px solid #e9ecef;
+        padding-bottom: 10px;
+        margin-bottom: 10px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Gestión de Archivos</h1>
+        <div>
+            <a href="{{ url_for('director.view_initiative', iniciativa_id=iniciativa_id) }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i> Volver a la Iniciativa
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Panel principal: archivos y carga -->
+        <div class="col-lg-8 mb-4">
+            <!-- Estado de la gestión de archivos -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Configuración de Archivos</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('director.enable_files', iniciativa_id=iniciativa_id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="enable_files" name="enable_files" {% if files_enabled %}checked{% endif %}>
+                            <label class="form-check-label" for="enable_files">
+                                <strong>Habilitar gestión de archivos para esta iniciativa</strong>
+                            </label>
+                        </div>
+                        <p class="text-muted mt-2">
+                            {% if files_enabled %}
+                            <small><i class="fas fa-info-circle me-1"></i> La gestión de archivos está habilitada. Los colaboradores pueden subir y descargar archivos.</small>
+                            {% else %}
+                            <small><i class="fas fa-info-circle me-1"></i> La gestión de archivos está deshabilitada. Habilítala para permitir que los colaboradores suban y descarguen archivos.</small>
+                            {% endif %}
+                        </p>
+                        <button type="submit" class="btn btn-primary mt-2">
+                            <i class="fas fa-save me-1"></i> Guardar Configuración
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Archivos de la iniciativa -->
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Archivos de la Iniciativa</h5>
+                </div>
+                <div class="card-body">
+                    {% if files_enabled %}
+                        <!-- Formulario de carga de archivos -->
+                        <div class="mb-4">
+                            <form method="POST" action="{{ url_for('director.upload_file', iniciativa_id=iniciativa_id) }}" enctype="multipart/form-data">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                <div class="mb-3">
+                                    <label for="file" class="form-label">Seleccionar archivo</label>
+                                    <input type="file" class="form-control" id="file" name="file" required>
+                                    <div class="form-text">Archivos permitidos: CAD, 3D, Office, PDF, imágenes y comprimidos. Máximo 50MB.</div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="description" class="form-label">Descripción (opcional)</label>
+                                    <textarea class="form-control" id="description" name="description" rows="2" maxlength="200"></textarea>
+                                </div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-upload me-1"></i> Subir Archivo
+                                </button>
+                            </form>
+                        </div>
+
+                        <hr>
+
+                        <!-- Lista de archivos -->
+                        {% if files %}
+                            <div class="row">
+                                {% for file in files %}
+                                    <div class="col-md-4 col-sm-6 mb-4">
+                                        <div class="card file-card h-100">
+                                            <div class="card-body text-center">
+                                                <!-- Icono según tipo de archivo -->
+                                                <div class="file-icon {{ file.file_type }}">
+                                                    {% if file.file_type == 'autocad' %}
+                                                        <i class="fas fa-drafting-compass"></i>
+                                                    {% elif file.file_type == '3d' %}
+                                                        <i class="fas fa-cube"></i>
+                                                    {% elif file.file_type == 'word' %}
+                                                        <i class="fas fa-file-word"></i>
+                                                    {% elif file.file_type == 'excel' %}
+                                                        <i class="fas fa-file-excel"></i>
+                                                    {% elif file.file_type == 'powerpoint' %}
+                                                        <i class="fas fa-file-powerpoint"></i>
+                                                    {% elif file.file_type == 'pdf' %}
+                                                        <i class="fas fa-file-pdf"></i>
+                                                    {% elif file.file_type == 'image' %}
+                                                        <i class="fas fa-file-image"></i>
+                                                    {% elif file.file_type == 'compressed' %}
+                                                        <i class="fas fa-file-archive"></i>
+                                                    {% else %}
+                                                        <i class="fas fa-file"></i>
+                                                    {% endif %}
+                                                </div>
+
+                                                <!-- Nombre del archivo -->
+                                                <h6 class="card-title" title="{{ file.original_filename }}">
+                                                    {{ file.original_filename|truncate(25) }}
+                                                </h6>
+
+                                                <!-- Información del archivo -->
+                                                <p class="card-text text-muted small">
+                                                    {% set size_kb = (file.file_size / 1024)|round|int %}
+                                                    {% set size_mb = (size_kb / 1024)|round(2) %}
+                                                    {% if size_kb < 1024 %}
+                                                        {{ size_kb }} KB
+                                                    {% else %}
+                                                        {{ size_mb }} MB
+                                                    {% endif %}
+                                                    <br>
+                                                    {% if file.is_default %}
+                                                        <span class="badge bg-info">Predeterminado</span>
+                                                    {% endif %}
+                                                </p>
+
+                                                <!-- Descripción -->
+                                                {% if file.description %}
+                                                    <p class="card-text small">{{ file.description }}</p>
+                                                {% endif %}
+
+                                                <!-- Botones de acción -->
+                                                <div class="file-card-actions mt-3">
+                                                    <a href="{{ url_for('director.download_file', iniciativa_id=iniciativa_id, file_id=file._id) }}" 
+                                                       class="btn btn-sm btn-primary mb-1" title="Descargar">
+                                                        <i class="fas fa-download"></i>
+                                                    </a>
+                                                    
+                                                    <button type="button" class="btn btn-sm btn-info mb-1" 
+                                                            data-bs-toggle="modal" 
+                                                            data-bs-target="#editFileModal{{ file._id }}" 
+                                                            title="Editar información">
+                                                        <i class="fas fa-edit"></i>
+                                                    </button>
+                                                    
+                                                    <button type="button" class="btn btn-sm btn-danger mb-1" 
+                                                            data-bs-toggle="modal" 
+                                                            data-bs-target="#deleteFileModal{{ file._id }}" 
+                                                            title="Eliminar">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div class="card-footer">
+                                                <small class="text-muted">
+                                                    Subido el {{ file.uploaded_at.strftime('%d/%m/%Y') }}
+                                                </small>
+                                            </div>
+                                        </div>
+
+                                        <!-- Modal para editar información del archivo -->
+                                        <div class="modal fade" id="editFileModal{{ file._id }}" tabindex="-1" aria-hidden="true">
+                                            <div class="modal-dialog">
+                                                <div class="modal-content">
+                                                    <div class="modal-header">
+                                                        <h5 class="modal-title">Editar información</h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                    </div>
+                                                    <form method="POST" action="{{ url_for('director.update_file_info', iniciativa_id=iniciativa_id, file_id=file._id) }}">
+                                                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                                        <div class="modal-body">
+                                                            <div class="mb-3">
+                                                                <label for="description{{ file._id }}" class="form-label">Descripción</label>
+                                                                <textarea class="form-control" id="description{{ file._id }}" 
+                                                                    name="description" rows="3" maxlength="200">{{ file.description }}</textarea>
+                                                            </div>
+                                                        </div>
+                                                        <div class="modal-footer">
+                                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                                            <button type="submit" class="btn btn-primary">Guardar cambios</button>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Modal para confirmar eliminación -->
+                                        <div class="modal fade" id="deleteFileModal{{ file._id }}" tabindex="-1" aria-hidden="true">
+                                            <div class="modal-dialog">
+                                                <div class="modal-content">
+                                                    <div class="modal-header">
+                                                        <h5 class="modal-title">Confirmar eliminación</h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                        <p>¿Estás seguro de que deseas eliminar el archivo <strong>{{ file.original_filename }}</strong>?</p>
+                                                        <p class="text-danger">Esta acción no se puede deshacer.</p>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                                        <form method="POST" action="{{ url_for('director.delete_file', iniciativa_id=iniciativa_id, file_id=file._id) }}">
+                                                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                                            <button type="submit" class="btn btn-danger">Eliminar</button>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="alert alert-info mb-0">
+                                <i class="fas fa-info-circle me-2"></i> No hay archivos subidos para esta iniciativa.
+                            </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i> La gestión de archivos está deshabilitada para esta iniciativa. Habilítala para comenzar a subir archivos.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel lateral: historial y archivos predeterminados -->
+        <div class="col-lg-4">
+            <!-- Archivos predeterminados del sistema -->
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Archivos Predeterminados</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-3">Estos son archivos predeterminados del sistema que puedes agregar a cualquier iniciativa.</p>
+                    
+                    <!-- Lista de archivos predeterminados -->
+                    {% if default_files %}
+                        <div class="list-group mb-3">
+                            {% for file in default_files %}
+                                <div class="list-group-item list-group-item-action">
+                                    <div class="d-flex w-100 justify-content-between align-items-center">
+                                        <h6 class="mb-1" title="{{ file.original_filename }}">
+                                            <i class="fas fa-file me-2 {{ file.file_type }}"></i>
+                                            {{ file.original_filename|truncate(25) }}
+                                        </h6>
+                                        <div>
+                                            {% if files_enabled %}
+                                                <form method="POST" action="{{ url_for('director.add_default_file_to_initiative', iniciativa_id=iniciativa_id, file_id=file._id) }}" class="d-inline">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                                    <button type="submit" class="btn btn-sm btn-primary" title="Agregar a esta iniciativa">
+                                                        <i class="fas fa-plus"></i>
+                                                    </button>
+                                                </form>
+                                            {% endif %}
+                                            <a href="{{ url_for('director.download_default_file', file_id=file._id) }}" 
+                                               class="btn btn-sm btn-info" title="Descargar">
+                                                <i class="fas fa-download"></i>
+                                            </a>
+                                        </div>
+                                    </div>
+                                    {% if file.description %}
+                                        <p class="mb-1 small">{{ file.description }}</p>
+                                    {% endif %}
+                                    <small class="text-muted">
+                                        {% set size_kb = (file.file_size / 1024)|round|int %}
+                                        {% set size_mb = (size_kb / 1024)|round(2) %}
+                                        {% if size_kb < 1024 %}
+                                            {{ size_kb }} KB
+                                        {% else %}
+                                            {{ size_mb }} MB
+                                        {% endif %}
+                                        | Categoría: {{ file.category|capitalize }}
+                                    </small>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i> No hay archivos predeterminados disponibles.
+                        </div>
+                    {% endif %}
+                    
+                    <!-- Botón para agregar archivo predeterminado -->
+                    <button type="button" class="btn btn-success mt-2" data-bs-toggle="modal" data-bs-target="#addDefaultFileModal">
+                        <i class="fas fa-plus me-1"></i> Agregar Archivo Predeterminado
+                    </button>
+                </div>
+            </div>
+
+            <!-- Historial de archivos -->
+            <div class="card">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">Historial de Actividad</h5>
+                </div>
+                <div class="card-body">
+                    {% if file_history %}
+                        <div class="history-list">
+                            {% for entry in file_history %}
+                                <div class="history-item">
+                                    <div class="d-flex justify-content-between">
+                                        <strong>
+                                            {% if entry.action == 'upload' %}
+                                                <i class="fas fa-upload text-success me-1"></i> Subida
+                                            {% elif entry.action == 'delete' %}
+                                                <i class="fas fa-trash text-danger me-1"></i> Eliminación
+                                            {% elif entry.action == 'update' %}
+                                                <i class="fas fa-edit text-info me-1"></i> Actualización
+                                            {% elif entry.action == 'enable_files' %}
+                                                <i class="fas fa-toggle-on text-success me-1"></i> Habilitación
+                                            {% elif entry.action == 'disable_files' %}
+                                                <i class="fas fa-toggle-off text-warning me-1"></i> Deshabilitación
+                                            {% endif %}
+                                        </strong>
+                                        <small class="text-muted">
+                                            {{ entry.timestamp.strftime('%d/%m/%Y %H:%M') }}
+                                        </small>
+                                    </div>
+                                    <div>
+                                        {% set user = users.get(entry.user_id, {}) %}
+                                        <span class="text-muted">
+                                            Por: {{ user.get('nombre', user.get('email', 'Usuario desconocido')) }}
+                                        </span>
+                                    </div>
+                                    {% if entry.details %}
+                                        <div class="small">
+                                            {{ entry.details }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i> No hay actividad registrada.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para agregar archivo predeterminado -->
+<div class="modal fade" id="addDefaultFileModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Agregar archivo predeterminado</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="{{ url_for('director.add_default_file') }}" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="default_file" class="form-label">Seleccionar archivo</label>
+                        <input type="file" class="form-control" id="default_file" name="file" required>
+                        <div class="form-text">Solo se permiten documentos (PDF, Word, Excel, PowerPoint, Texto).</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="default_description" class="form-label">Descripción</label>
+                        <textarea class="form-control" id="default_description" name="description" rows="3" maxlength="200" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="file_category" class="form-label">Categoría</label>
+                        <select class="form-select" id="file_category" name="file_category" required>
+                            <option value="manual">Manual de Usuario</option>
+                            <option value="template">Plantilla</option>
+                            <option value="guide">Guía</option>
+                            <option value="regulation">Normativa</option>
+                            <option value="other">Otro</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success">Agregar archivo</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

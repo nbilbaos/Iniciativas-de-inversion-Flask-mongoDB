@@ -1,0 +1,291 @@
+{# app/templates/colaborador/view_files.html #}
+{% extends "base.html" %}
+
+{% block title %}Archivos - {{ iniciativa.nombre_iniciativa or 'Iniciativa' }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .file-card {
+        transition: all 0.3s ease;
+    }
+    .file-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    .file-icon {
+        font-size: 2.5rem;
+        margin-bottom: 15px;
+    }
+    .file-icon.autocad { color: #C62828; }
+    .file-icon.pdf { color: #D32F2F; }
+    .file-icon.word { color: #1565C0; }
+    .file-icon.excel { color: #2E7D32; }
+    .file-icon.powerpoint { color: #FF8F00; }
+    .file-icon.image { color: #6A1B9A; }
+    .file-icon.compressed { color: #F9A825; }
+    .file-icon.3d { color: #00838F; }
+    .file-icon.other { color: #757575; }
+    
+    .file-card-actions {
+        opacity: 0.3;
+        transition: opacity 0.2s ease;
+    }
+    .file-card:hover .file-card-actions {
+        opacity: 1;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Archivos de la Iniciativa</h1>
+        <div>
+            <a href="{{ url_for('colaborador.view_initiative_detail', iniciativa_id=iniciativa_id) }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i> Volver a la Iniciativa
+            </a>
+        </div>
+    </div>
+
+    <!-- Información de la iniciativa -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">{{ iniciativa.nombre_iniciativa or iniciativa.nombre or 'Iniciativa' }}</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p>
+                        <strong>Código:</strong> 
+                        {{ iniciativa.cod or iniciativa.codigo or 'N/A' }}
+                    </p>
+                    <p>
+                        <strong>Estado:</strong>
+                        <span class="badge bg-info">{{ iniciativa.estado or 'No definido' }}</span>
+                    </p>
+                </div>
+                <div class="col-md-6">
+                    {% if iniciativa.descripcion %}
+                        <p><strong>Descripción:</strong> {{ iniciativa.descripcion }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Sección principal: archivos -->
+        <div class="col-md-8 mb-4">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Archivos</h5>
+                </div>
+                <div class="card-body">
+                    {% if files_enabled %}
+                        <!-- Formulario de carga de archivos -->
+                        <div class="mb-4">
+                            <h6>Subir archivo</h6>
+                            <form method="POST" action="{{ url_for('colaborador.upload_file', iniciativa_id=iniciativa_id) }}" enctype="multipart/form-data">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label for="file" class="form-label">Seleccionar archivo</label>
+                                        <input type="file" class="form-control" id="file" name="file" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="description" class="form-label">Descripción (opcional)</label>
+                                        <textarea class="form-control" id="description" name="description" rows="1" maxlength="200"></textarea>
+                                    </div>
+                                    <div class="col-12">
+                                        <div class="form-text mb-2">Archivos permitidos: CAD, 3D, Office, PDF, imágenes y comprimidos. Máximo 50MB.</div>
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="fas fa-upload me-1"></i> Subir Archivo
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
+                        <hr>
+
+                        <!-- Lista de archivos -->
+                        {% if files %}
+                            <h6 class="mb-3">Archivos disponibles</h6>
+                            <div class="row">
+                                {% for file in files %}
+                                    <div class="col-md-4 col-sm-6 mb-4">
+                                        <div class="card file-card h-100">
+                                            <div class="card-body text-center">
+                                                <!-- Icono según tipo de archivo -->
+                                                <div class="file-icon {{ file.file_type }}">
+                                                    {% if file.file_type == 'autocad' %}
+                                                        <i class="fas fa-drafting-compass"></i>
+                                                    {% elif file.file_type == '3d' %}
+                                                        <i class="fas fa-cube"></i>
+                                                    {% elif file.file_type == 'word' %}
+                                                        <i class="fas fa-file-word"></i>
+                                                    {% elif file.file_type == 'excel' %}
+                                                        <i class="fas fa-file-excel"></i>
+                                                    {% elif file.file_type == 'powerpoint' %}
+                                                        <i class="fas fa-file-powerpoint"></i>
+                                                    {% elif file.file_type == 'pdf' %}
+                                                        <i class="fas fa-file-pdf"></i>
+                                                    {% elif file.file_type == 'image' %}
+                                                        <i class="fas fa-file-image"></i>
+                                                    {% elif file.file_type == 'compressed' %}
+                                                        <i class="fas fa-file-archive"></i>
+                                                    {% else %}
+                                                        <i class="fas fa-file"></i>
+                                                    {% endif %}
+                                                </div>
+
+                                                <!-- Nombre del archivo -->
+                                                <h6 class="card-title" title="{{ file.original_filename }}">
+                                                    {{ file.original_filename|truncate(25) }}
+                                                </h6>
+
+                                                <!-- Información del archivo -->
+                                                <p class="card-text text-muted small">
+                                                    {% set size_kb = (file.file_size / 1024)|round|int %}
+                                                    {% set size_mb = (size_kb / 1024)|round(2) %}
+                                                    {% if size_kb < 1024 %}
+                                                        {{ size_kb }} KB
+                                                    {% else %}
+                                                        {{ size_mb }} MB
+                                                    {% endif %}
+                                                    <br>
+                                                    {% if file.is_default %}
+                                                        <span class="badge bg-info">Predeterminado</span>
+                                                    {% endif %}
+                                                </p>
+
+                                                <!-- Descripción -->
+                                                {% if file.description %}
+                                                    <p class="card-text small">{{ file.description }}</p>
+                                                {% endif %}
+
+                                                <!-- Botones de acción -->
+                                                <div class="file-card-actions mt-3">
+                                                    <a href="{{ url_for('colaborador.download_file', iniciativa_id=iniciativa_id, file_id=file._id) }}" 
+                                                       class="btn btn-sm btn-primary mb-1" title="Descargar">
+                                                        <i class="fas fa-download"></i>
+                                                    </a>
+                                                    
+                                                    <!-- Solo puede editar sus propios archivos -->
+                                                    {% if file.uploaded_by == current_user.get_id() and not file.is_default %}
+                                                        <button type="button" class="btn btn-sm btn-info mb-1" 
+                                                                data-bs-toggle="modal" 
+                                                                data-bs-target="#editFileModal{{ file._id }}" 
+                                                                title="Editar información">
+                                                            <i class="fas fa-edit"></i>
+                                                        </button>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            <div class="card-footer">
+                                                <small class="text-muted">
+                                                    {% set uploader = users.get(file.uploaded_by, {}) %}
+                                                    Subido por: {{ uploader.get('nombre', uploader.get('email', 'Usuario')) }}
+                                                </small>
+                                            </div>
+                                        </div>
+
+                                        <!-- Modal para editar información del archivo -->
+                                        {% if file.uploaded_by == current_user.get_id() and not file.is_default %}
+                                            <div class="modal fade" id="editFileModal{{ file._id }}" tabindex="-1" aria-hidden="true">
+                                                <div class="modal-dialog">
+                                                    <div class="modal-content">
+                                                        <div class="modal-header">
+                                                            <h5 class="modal-title">Editar información</h5>
+                                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                        </div>
+                                                        <form method="POST" action="{{ url_for('colaborador.update_file_info', iniciativa_id=iniciativa_id, file_id=file._id) }}">
+                                                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                                            <div class="modal-body">
+                                                                <div class="mb-3">
+                                                                    <label for="description{{ file._id }}" class="form-label">Descripción</label>
+                                                                    <textarea class="form-control" id="description{{ file._id }}" 
+                                                                        name="description" rows="3" maxlength="200">{{ file.description }}</textarea>
+                                                                </div>
+                                                            </div>
+                                                            <div class="modal-footer">
+                                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                                                <button type="submit" class="btn btn-primary">Guardar cambios</button>
+                                                            </div>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i> No hay archivos disponibles para esta iniciativa.
+                            </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i> La gestión de archivos no está habilitada para esta iniciativa.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel lateral informativo -->
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Información</h5>
+                </div>
+                <div class="card-body">
+                    <h6>Acerca de los archivos</h6>
+                    <p>Esta sección te permite acceder a documentos importantes relacionados con la iniciativa, así como subir tus propios archivos para compartir con el equipo de trabajo.</p>
+                    
+                    <h6 class="mt-4">Tipos de archivos permitidos</h6>
+                    <ul class="list-unstyled">
+                        <li><i class="fas fa-drafting-compass text-danger me-2"></i> Archivos CAD (.dwg, .dxf, etc.)</li>
+                        <li><i class="fas fa-cube text-info me-2"></i> Modelos 3D (.blend, .obj, etc.)</li>
+                        <li><i class="fas fa-file-word text-primary me-2"></i> Documentos Word (.doc, .docx)</li>
+                        <li><i class="fas fa-file-excel text-success me-2"></i> Hojas de cálculo (.xls, .xlsx)</li>
+                        <li><i class="fas fa-file-pdf text-danger me-2"></i> Documentos PDF (.pdf)</li>
+                        <li><i class="fas fa-file-image text-purple me-2"></i> Imágenes (.jpg, .png, etc.)</li>
+                        <li><i class="fas fa-file-archive text-warning me-2"></i> Archivos comprimidos (.zip, .rar)</li>
+                    </ul>
+                    
+                    <div class="alert alert-info mt-3">
+                        <i class="fas fa-info-circle me-2"></i> El tamaño máximo permitido es de 50MB por archivo.
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">Recomendaciones</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="fa-ul">
+                        <li><span class="fa-li"><i class="fas fa-check-circle text-success"></i></span>
+                            Usa nombres descriptivos para tus archivos.
+                        </li>
+                        <li class="mt-2"><span class="fa-li"><i class="fas fa-check-circle text-success"></i></span>
+                            Agrega una descripción clara a cada archivo.
+                        </li>
+                        <li class="mt-2"><span class="fa-li"><i class="fas fa-check-circle text-success"></i></span>
+                            Respeta las versiones de los archivos que suban otros usuarios.
+                        </li>
+                        <li class="mt-2"><span class="fa-li"><i class="fas fa-check-circle text-success"></i></span>
+                            Descarga los archivos para trabajar con ellos y luego sube las nuevas versiones.
+                        </li>
+                        <li class="mt-2"><span class="fa-li"><i class="fas fa-exclamation-triangle text-warning"></i></span>
+                            No subas archivos con información sensible o confidencial.
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

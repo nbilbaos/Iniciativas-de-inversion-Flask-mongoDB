@@ -16,6 +16,7 @@ from ..models.user import User
 from flask import jsonify
 from ..models.task import Task
 
+
 @director_bp.route('/dashboard')
 @login_required
 @director_required

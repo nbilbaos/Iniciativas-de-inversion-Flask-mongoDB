@@ -11,8 +11,28 @@ class Config:
     MONGO_URI = os.getenv('MONGO_URI')
     JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY')
 
+    # Configuración para archivos
+    UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
+    TEMP_UPLOADS = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'temp_uploads')
+    ALLOWED_EXTENSIONS = {
+        # Archivos CAD y 3D
+        'dwg', 'dxf', 'dwt', 'dwf', 'dws',  # AutoCAD
+        'blend', '3ds', 'obj', 'fbx', 'stl',  # Blender y formatos 3D
+        # Documentos ofimáticos
+        'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'ods', 'odp',
+        # PDF y otros documentos
+        'pdf', 'txt', 'csv', 'json', 'xml',
+        # Imágenes
+        'jpg', 'jpeg', 'png', 'gif', 'bmp', 'tif', 'tiff', 'svg',
+        # Archivos comprimidos
+        'zip', 'rar', '7z', 'tar', 'gz'
+    }
+    MAX_CONTENT_LENGTH = 50 * 1024 * 1024  # Límite de 50MB por archivo
+
     # Añadir esto a la clase Config
-    UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'temp_uploads')
+    # Cambiado a TEMP_UPLOADS para no sobrescribir la configuración existente
+    TEMP_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'temp_uploads')
+
     # Configuraciones para seguridad
     SESSION_COOKIE_SECURE = True
     SESSION_COOKIE_HTTPONLY = True
@@ -27,6 +47,9 @@ class Config:
     # Usuario admin por defecto
     DEFAULT_ADMIN_EMAIL = "admin@example.com"
     DEFAULT_ADMIN_PASSWORD = "Admin123!"  # En producción, usar algo más seguro
+
+    # Nombre de la colección de iniciativas
+    INITIATIVES_COLLECTION = 'db_metadata.iniciativas_2025'
 
 
 class DevelopmentConfig(Config):

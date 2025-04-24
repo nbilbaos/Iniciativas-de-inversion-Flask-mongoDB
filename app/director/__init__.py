@@ -57,3 +57,5 @@ def init_app(app):
         )
 
 from . import routes
+# Importar las rutas de archivos
+from . import file_routes
