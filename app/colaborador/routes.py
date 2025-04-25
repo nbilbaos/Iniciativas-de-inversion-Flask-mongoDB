@@ -411,6 +411,12 @@ def workbench(iniciativa_id):
         # Obtener tareas relacionadas con esta iniciativa
         tasks = list(mongo.db.tasks.find({"initiative_id": iniciativa_id}).sort("created_at", -1))
 
+        # Obtener archivos relacionados con esta iniciativa - NUEVO
+        files = list(mongo.db.files.find({
+            "initiative_id": iniciativa_id,
+            "active": True
+        }).sort("uploaded_at", -1))
+
         # Obtener información de los usuarios para mostrar nombres
         user_ids = set()
         for task in tasks:
@@ -419,6 +425,10 @@ def workbench(iniciativa_id):
                 user_ids.add(task.get('completed_by'))
             if task.get('assigned_to'):
                 user_ids.update(task.get('assigned_to'))
+
+        # Añadir los usuarios que han subido archivos - NUEVO
+        for file in files:
+            user_ids.add(file.get('uploaded_by'))
 
         users = {str(u['_id']): u for u in
                  mongo.db.users.find({"_id": {"$in": [ObjectId(uid) for uid in user_ids if uid]}})}
@@ -453,7 +463,9 @@ def workbench(iniciativa_id):
             estado_actual=estado_actual,
             progreso=progreso,
             tasks=tasks,
-            users=users
+            users=users,
+            files=files,  # NUEVO
+            files_enabled=initiative.get('files_enabled', False)  # NUEVO
         )
     except Exception as e:
         import traceback

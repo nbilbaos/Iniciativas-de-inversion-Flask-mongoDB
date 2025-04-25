@@ -223,12 +223,24 @@ def upload_file(iniciativa_id):
                 for error in errors:
                     flash(f'Error en el campo {field}: {error}', 'danger')
 
-        return redirect(url_for('colaborador.view_files', iniciativa_id=iniciativa_id))
+        # Verificar la URL de referencia para determinar dónde redirigir
+        referer = request.headers.get('Referer', '')
+        if 'workbench' in referer:
+            return redirect(url_for('colaborador.workbench', iniciativa_id=iniciativa_id))
+        else:
+            return redirect(url_for('colaborador.view_files', iniciativa_id=iniciativa_id))
+
     except Exception as e:
         import traceback
         print(f"Error al subir archivo: {traceback.format_exc()}")
         flash(f'Error al subir el archivo: {str(e)}', 'danger')
-        return redirect(url_for('colaborador.view_files', iniciativa_id=iniciativa_id))
+
+        # También verificar la URL de referencia para determinar dónde redirigir en caso de error
+        referer = request.headers.get('Referer', '')
+        if 'workbench' in referer:
+            return redirect(url_for('colaborador.workbench', iniciativa_id=iniciativa_id))
+        else:
+            return redirect(url_for('colaborador.view_files', iniciativa_id=iniciativa_id))
 
 
 @colaborador_bp.route('/iniciativas/<iniciativa_id>/archivos/<file_id>/update', methods=['POST'])
