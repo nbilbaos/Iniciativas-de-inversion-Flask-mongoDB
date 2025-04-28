@@ -99,11 +99,6 @@ def create_app():
     # Configurar el cargador de usuarios para Flask-Login
     from .models.user import User
 
-
-
-
-
-
     @login_manager.user_loader
     def load_user(user_id):
         try:
