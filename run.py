@@ -1,7 +1,6 @@
 from app import create_app
 
-# Cambia de 'app' a 'application' para Elastic Beanstalk
-application = create_app()
+application = create_app()  # OJO: debe ser 'application', NO 'app'
 
 if __name__ == "__main__":
-    application.run()
+    application.run(host="0.0.0.0", port=5000)
