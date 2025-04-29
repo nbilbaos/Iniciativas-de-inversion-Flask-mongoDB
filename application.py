@@ -1,6 +1,5 @@
 from app import create_app
 
-# Cambia de 'app' a 'application' para Elastic Beanstalk
 application = create_app()
 
 if __name__ == "__main__":
