@@ -3,6 +3,21 @@
 {% block title %}Detalle de Iniciativa{% endblock %}
 
 {% block content %}
+
+{% macro format_date(date_value) %}
+    {% if date_value %}
+        {% if date_value is string %}
+            {{ date_value }}
+        {% else %}
+            {{ date_value|format_date('%d/%m/%Y %H:%M:%S') }}
+        {% endif %}
+    {% else %}
+        -
+    {% endif %}
+{% endmacro %}
+
+
+
 <div class="container-fluid py-4">
 
     <!-- Encabezado -->
@@ -46,8 +61,8 @@
             </span>
                         {% if iniciativa.ultimo_cambio_estado %}
                         <small class="text-muted">
-                            Última actualización:
-                            {{ iniciativa.ultimo_cambio_estado.strftime('%d/%m/%Y %H:%M') }}
+                            Actualizado:
+                            {{ iniciativa.ultimo_cambio_estado|format_date('%d/%m/%Y %H:%M:%S') }}
                         </small>
                         {% endif %}
                     </div>
@@ -94,7 +109,7 @@
                         <tbody>
                         {% for e in estados_historial %}
                         <tr>
-                            <td>{{ e.timestamp.strftime('%d/%m/%Y %H:%M') }}</td>
+                            <td>{{ e.timestamp|format_date('%d/%m/%Y %H:%M:%S') }}</td>
                             <td>
                                 {% if e.estado_anterior %}
                                 <span class="badge bg-secondary">{{ e.estado_anterior }}</span>
@@ -178,7 +193,7 @@
                     <tbody>
                     {% for a in assignments_history %}
                     <tr>
-                        <td>{{ a.timestamp and a.timestamp.strftime('%d/%m/%Y %H:%M') or '-' }}</td>
+                        <td>{{ a.timestamp and a.timestamp|format_date('%d/%m/%Y %H:%M:%S') or '-' }}</td>
                         <td>
                     <span class="badge {{ 'bg-success' if a.type=='assignment' else 'bg-danger' }}">
                       {{ 'Asignación' if a.type=='assignment' else 'Desasignación' }}
@@ -267,7 +282,7 @@
                                     </div>
                                     <div>
                                         <i class="fas fa-calendar me-1"></i> Fecha:
-                                        {{ task.created_at.strftime('%d/%m/%Y %H:%M') }}
+                                        {{ task.created_at|format_date('%d/%m/%Y %H:%M:%S') }}
                                     </div>
                                     {% if task.assigned_to %}
                                     <div>
@@ -326,14 +341,14 @@
                                     </div>
                                     <div>
                                         <i class="fas fa-calendar me-1"></i> Fecha de creación:
-                                        {{ task.created_at.strftime('%d/%m/%Y %H:%M') }}
+                                        {{ task.created_at|format_date('%d/%m/%Y %H:%M:%S') }}
                                     </div>
                                     <div>
                                         <i class="fas fa-check-circle me-1"></i> Completada por:
                                         {% set comp = users.get(task.completed_by, {}) %}
                                         <strong>{{ comp.nombre if comp.nombre else comp.email or 'Usuario desconocido'
                                             }}</strong>
-                                        el {{ task.completed_at.strftime('%d/%m/%Y %H:%M') }}
+                                        el {{ task.completed_at|format_date('%d/%m/%Y %H:%M:%S') }}
                                     </div>
                                     {% if task.assigned_to %}
                                     <div>

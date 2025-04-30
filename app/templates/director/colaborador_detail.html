@@ -75,7 +75,7 @@
                                 <th>Fecha de Registro:</th>
                                 <td>
                                     {% if colaborador.created_at %}
-                                    {{ colaborador.created_at.strftime('%d/%m/%Y %H:%M:%S') }}
+                                    {{ colaborador.created_at|format_date('%d/%m/%Y %H:%M:%S') }}
                                     {% else %}
                                     No disponible
                                     {% endif %}
@@ -85,7 +85,7 @@
                                 <th>Último Ingreso:</th>
                                 <td>
                                     {% if colaborador.last_login %}
-                                    {{ colaborador.last_login.strftime('%d/%m/%Y %H:%M:%S') }}
+                                    {{ colaborador.last_login|format_date('%d/%m/%Y %H:%M:%S') }}
                                     {% else %}
                                     Nunca ha ingresado
                                     {% endif %}
@@ -113,7 +113,7 @@
                             <div class="d-flex w-100 justify-content-between">
                                 {% set info = get_iniciativa_info(iniciativa.initiative_id) %}
                                 <h6 class="mb-1">{{ info.nombre }}</h6>
-                                <small>{{ iniciativa.assigned_at.strftime('%d/%m/%Y') if iniciativa.assigned_at else '-'
+                                <small>{{ iniciativa.assigned_at|format_date('%d/%m/%Y %H:%M:%S') }} if iniciativa.assigned_at else '-'
                                     }}</small>
                             </div>
                             <div class="d-flex justify-content-between align-items-center mt-2">
@@ -222,7 +222,7 @@
                         </td>
                         <td>
                             {% if iniciativa.assigned_at %}
-                            {{ iniciativa.assigned_at.strftime('%d/%m/%Y %H:%M') }}
+                            {{ iniciativa.assigned_at|format_date('%d/%m/%Y %H:%M:%S') }}
                             {% else %}
                             -
                             {% endif %}
@@ -237,7 +237,7 @@
                         </td>
                         <td>
                             {% if iniciativa.removed_at %}
-                            {{ iniciativa.removed_at.strftime('%d/%m/%Y %H:%M') }}
+                            {{ iniciativa.removed_at|format_date('%d/%m/%Y %H:%M:%S') }}
                             {% else %}
                             -
                             {% endif %}

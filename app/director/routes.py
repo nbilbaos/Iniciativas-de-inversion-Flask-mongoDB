@@ -16,6 +16,45 @@ from ..models.user import User
 from flask import jsonify
 from ..models.task import Task
 
+from unidecode import unidecode  # Asegúrate de tener `unidecode` instalado
+
+# Agregado al inicio de la función view_stats()
+from collections import defaultdict
+
+# Añadir esta función de utilidad en app/director/routes.py
+# Colócala al principio del archivo, después de las importaciones
+
+def format_date_for_template(date_value):
+    """
+    Formatea una fecha para usar en plantillas, maneja tanto objetos datetime como strings.
+
+    Args:
+        date_value: Puede ser un objeto datetime, un string o None
+
+    Returns:
+        Un objeto datetime si se puede convertir, None en caso contrario
+    """
+    if not date_value:
+        return None
+
+    if isinstance(date_value, datetime):
+        return date_value
+
+    # Si es un string, intenta convertirlo a datetime
+    if isinstance(date_value, str):
+        try:
+            # Intenta varios formatos de fecha comunes
+            for format_str in ['%Y-%m-%d', '%d/%m/%Y', '%Y-%m-%dT%H:%M:%S', '%Y-%m-%d %H:%M:%S']:
+                try:
+                    return datetime.strptime(date_value, format_str)
+                except ValueError:
+                    continue
+        except Exception as e:
+            print(f"Error al convertir fecha '{date_value}': {e}")
+
+    # Si no se pudo convertir, devuelve None
+    return None
+
 
 @director_bp.route('/dashboard')
 @login_required
@@ -335,6 +374,11 @@ def list_initiatives():
             'pages': (total + per_page - 1) // per_page
         }
 
+        # Procesar las fechas para todas las iniciativas
+        for iniciativa in iniciativas:
+            if 'fecha_creacion' in iniciativa:
+                iniciativa['fecha_creacion'] = format_date_for_template(iniciativa['fecha_creacion'])
+
         return render_template(
             'director/iniciativas.html',
             iniciativas=iniciativas,
@@ -350,6 +394,9 @@ def list_initiatives():
         print(f"DEBUG - Error: {error_details}")
         flash(f'Error al cargar iniciativas: {e}', 'danger')
         return redirect(url_for('director.dashboard'))
+
+
+
 
 @director_bp.route('/iniciativas/<iniciativa_id>')
 @login_required
@@ -1194,4 +1241,142 @@ def all_collaborator_tasks():
         import traceback
         print(f"Error al cargar todas las tareas: {traceback.format_exc()}")
         flash(f'Error al cargar las tareas: {str(e)}', 'danger')
+        return redirect(url_for('director.dashboard'))
+
+
+@director_bp.route('/stats')
+@login_required
+@director_required
+def view_stats():
+    """Mostrar estadísticas sobre las iniciativas."""
+    try:
+
+        collection_name = current_app.config['INITIATIVES_COLLECTION']
+        parts = collection_name.split('.')
+        coll = mongo.db[parts[0]][parts[1]] if len(parts) > 1 else mongo.db[collection_name]
+
+        total_iniciativas = coll.count_documents({})
+
+        pipeline_estado = [
+            {"$group": {"_id": "$estado", "count": {"$sum": 1}}}
+        ]
+        estados_count = list(coll.aggregate(pipeline_estado))
+        estados_data = {estado["_id"] or "No definido": estado["count"] for estado in estados_count}
+
+        with_collaborators = coll.count_documents({"assigned_users": {"$exists": True, "$not": {"$size": 0}}})
+        collaborators_percent = round((with_collaborators / total_iniciativas * 100) if total_iniciativas else 0)
+
+        # Corregido: uso del campo "Participación" (con tilde y mayúscula)
+        # Obtener y procesar valores únicos del campo "Participación"
+        participacion_contador = defaultdict(int)
+
+        for doc in coll.find({}, {"participación": 1}):
+            valor = doc.get("participación", "no especificado")
+
+            # Normalizar texto: quitar tildes, pasar a minúsculas, eliminar espacios extra
+            if isinstance(valor, str):
+                normalizado = unidecode(valor.strip().lower())
+            else:
+                normalizado = "no especificado"
+
+            participacion_contador[normalizado] += 1
+
+        # Preparar datos para gráfico de torta
+        color_map = {
+            "si": "#28a745",
+            "no": "#dc3545",
+            "en avance": "#ffc107",
+            "no especificado": "#6c757d"
+        }
+
+        participacion_labels = []
+        participacion_values = []
+        participacion_colors = []
+
+        for key, value in participacion_contador.items():
+            participacion_labels.append(key.capitalize())
+            participacion_values.append(value)
+            participacion_colors.append(color_map.get(key, "#007bff"))
+
+        # Calcular % de participación positiva
+
+
+
+        with_participation = sum(
+            participacion_contador[k] for k in participacion_contador
+            if "si" in k or "avance" in k
+        )
+        participation_percent = round((with_participation / total_iniciativas * 100) if total_iniciativas > 0 else 0)
+
+        pipeline_meses = [
+            {
+                "$match": {
+                    "fecha_creacion": {"$type": "date"}
+                }
+            },
+            {
+                "$group": {
+                    "_id": {
+                        "month": {"$month": "$fecha_creacion"},
+                        "year": {"$year": "$fecha_creacion"}
+                    },
+                    "count": {"$sum": 1}
+                }
+            },
+            {"$sort": {"_id.year": 1, "_id.month": 1}}
+        ]
+
+        try:
+            meses_data = list(coll.aggregate(pipeline_meses))
+            meses_labels = [f"{item['_id']['month']}/{item['_id']['year']}" for item in meses_data]
+            meses_values = [item["count"] for item in meses_data]
+        except Exception as e:
+            print(f"Error al procesar estadísticas por mes: {e}")
+            meses_labels = []
+            meses_values = []
+
+        campos_stats = {}
+        campos_a_verificar = ["descripcion", "monto", "codigo", "ubicacion", "Participación", "observaciones", "num_participantes"]
+
+        for campo in campos_a_verificar:
+            if campo == "Participación":
+                count = coll.count_documents({
+                    "$or": [{"Participación": True}, {"Participación": "true"}]
+                })
+            elif campo == "num_participantes":
+                count = coll.count_documents({"num_participantes": {"$exists": True, "$gt": 0}})
+            else:
+                count = coll.count_documents({
+                    "$or": [
+                        {campo: {"$exists": True, "$ne": ""}},
+                        {campo: {"$exists": True, "$gt": 0}},
+                        {campo: {"$exists": True, "$eq": True}}
+                    ]
+                })
+
+            campos_stats[campo] = {
+                "count": count,
+                "percent": round((count / total_iniciativas * 100)) if total_iniciativas else 0
+            }
+
+        return render_template(
+            'director/stats.html',
+            total_iniciativas=total_iniciativas,
+            estados_data=estados_data,
+            with_collaborators=with_collaborators,
+            collaborators_percent=collaborators_percent,
+            with_participation=with_participation,
+            participation_percent=participation_percent,
+            participacion_labels=participacion_labels,
+            participacion_values=participacion_values,
+            participacion_colors=participacion_colors,
+            meses_labels=meses_labels,
+            meses_values=meses_values,
+            campos_stats=campos_stats
+        )
+
+    except Exception as e:
+        import traceback
+        print(f"Error al generar estadísticas: {traceback.format_exc()}")
+        flash(f'Error al cargar estadísticas: {str(e)}', 'danger')
         return redirect(url_for('director.dashboard'))

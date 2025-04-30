@@ -191,7 +191,7 @@
                                             </div>
                                             <div class="card-footer">
                                                 <small class="text-muted">
-                                                    Subido el {{ file.uploaded_at.strftime('%d/%m/%Y') }}
+                                                    Subido el {{ file.uploaded_at|format_date('%d/%m/%Y %H:%M:%S') }}
                                                 </small>
                                             </div>
                                         </div>
@@ -350,7 +350,7 @@
                                             {% endif %}
                                         </strong>
                                         <small class="text-muted">
-                                            {{ entry.timestamp.strftime('%d/%m/%Y %H:%M') }}
+                                            {{ fecha_variable|format_date('%d/%m/%Y %H:%M') }}
                                         </small>
                                     </div>
                                     <div>

@@ -1,0 +1,302 @@
+{% extends "base.html" %}
+
+{% block title %}Estadísticas{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stats-card {
+        transition: all 0.3s ease;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    .stats-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    .circle-progress {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background: conic-gradient(
+            var(--bs-primary) calc(var(--percent) * 1%),
+            #e9ecef calc(var(--percent) * 1%)
+        );
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .circle-progress::before {
+        content: '';
+        width: 90px;
+        height: 90px;
+        background: white;
+        border-radius: 50%;
+        position: absolute;
+    }
+    .progress-value {
+        position: relative;
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: var(--bs-primary);
+    }
+    .chart-container {
+        height: 300px;
+        position: relative;
+    }
+    .status-badge {
+        font-size: 0.85rem;
+        padding: 5px 10px;
+        margin: 3px;
+        display: inline-block;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Estadísticas de Iniciativas</h1>
+        <div>
+            <a href="{{ url_for('director.dashboard') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i> Volver al Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Tarjetas de Resumen -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-4">
+            <div class="card stats-card h-100">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Total de Iniciativas</h5>
+                    <div class="display-1 fw-bold text-primary">{{ total_iniciativas }}</div>
+                    <p class="text-muted">Registradas en el sistema</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-4">
+            <div class="card stats-card h-100">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Iniciativas con Colaboradores</h5>
+                    <div class="d-flex justify-content-center mb-2">
+                        <div class="circle-progress" style="--percent: {{ collaborators_percent }}">
+                            <span class="progress-value">{{ collaborators_percent }}%</span>
+                        </div>
+                    </div>
+                    <p class="text-muted">{{ with_collaborators }} de {{ total_iniciativas }} iniciativas</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-4">
+            <div class="card stats-card h-100">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Iniciativas con Participación</h5>
+                    <div class="d-flex justify-content-center mb-2">
+                        <div class="circle-progress" style="--percent: {{ participation_percent }}">
+                            <span class="progress-value">{{ participation_percent }}%</span>
+                        </div>
+                    </div>
+                    <p class="text-muted">{{ with_participation }} de {{ total_iniciativas }} iniciativas tienen participación positiva</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 mb-4">
+            <div class="card stats-card h-100">
+                <div class="card-body">
+                    <h5 class="card-title text-center">Estado de las Iniciativas</h5>
+                    <div class="mt-3">
+                        {% for estado, count in estados_data.items() %}
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span>{{ estado }}</span>
+                                <span class="badge bg-primary">{{ count }}</span>
+                            </div>
+                            <div class="progress mb-3" style="height: 8px;">
+                                <div class="progress-bar" role="progressbar" 
+                                     style="width: {{ (count / total_iniciativas * 100) if total_iniciativas > 0 else 0 }}%" 
+                                     aria-valuenow="{{ count }}" aria-valuemin="0" aria-valuemax="{{ total_iniciativas }}">
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráficos y Estadísticas Detalladas -->
+    <div class="row">
+        <!-- Gráfico de Tendencia Mensual -->
+        <div class="col-md-4 mb-4">
+            <div class="card stats-card h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Tendencia de Creación de Iniciativas</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="monthlyTrendChart" class="chart-container"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráfico de Participación (Torta) -->
+        <div class="col-md-4 mb-4">
+            <div class="card stats-card h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Distribución de Participación</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="participacionChart" class="chart-container"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estadísticas de Campos -->
+        <div class="col-md-4 mb-4">
+            <div class="card stats-card h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Completitud de Campos</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-3">Porcentaje de iniciativas que tienen estos campos completados:</p>
+                    {% for campo, stats in campos_stats.items() %}
+                        {% if campo != 'participacion' %}
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <strong>{{ campo|capitalize }}</strong>
+                                    <span>{{ stats.percent }}% ({{ stats.count }})</span>
+                                </div>
+                                <div class="progress" style="height: 10px;">
+                                    <div class="progress-bar bg-success" role="progressbar"
+                                         style="width: {{ stats.percent }}%"
+                                         aria-valuenow="{{ stats.percent }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Datos para el gráfico de tendencia mensual
+        const monthlyData = {
+            labels: {{ meses_labels|tojson }},
+            datasets: [{
+                label: 'Iniciativas Creadas',
+                data: {{ meses_values|tojson }},
+                backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                borderColor: 'rgb(54, 162, 235)',
+                borderWidth: 2,
+                tension: 0.3,
+                fill: true
+            }]
+        };
+
+        // Configuración del gráfico de línea
+        const monthlyConfig = {
+            type: 'line',
+            data: monthlyData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0
+                        }
+                    }
+                }
+            }
+        };
+
+        // Datos para el gráfico de participación (torta)
+        const participacionData = {
+            labels: {{ participacion_labels|tojson }},
+            datasets: [{
+                data: {{ participacion_values|tojson }},
+                backgroundColor: {{ participacion_colors|tojson }},
+                hoverOffset: 4
+            }]
+        };
+
+        // Configuración del gráfico de torta
+        const participacionConfig = {
+            type: 'pie',
+            data: participacionData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.raw || 0;
+                                const total = context.dataset.data.reduce((acc, val) => acc + val, 0);
+                                const percentage = Math.round((value / total) * 100);
+                                return `${label}: ${value} (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        // Crear los gráficos
+        new Chart(
+            document.getElementById('monthlyTrendChart'),
+            monthlyConfig
+        );
+
+        new Chart(
+            document.getElementById('participacionChart'),
+            participacionConfig
+        );
+
+        // Animación para los círculos de progreso
+        const circles = document.querySelectorAll('.circle-progress');
+        circles.forEach(circle => {
+            const percent = parseFloat(circle.style.getPropertyValue('--percent'));
+            let startPercent = 0;
+            const duration = 1500;
+            const startTime = performance.now();
+            
+            function animate(currentTime) {
+                const elapsedTime = currentTime - startTime;
+                const progress = Math.min(elapsedTime / duration, 1);
+                const currentPercent = progress * percent;
+                
+                circle.style.setProperty('--percent', currentPercent);
+                
+                if (progress < 1) {
+                    requestAnimationFrame(animate);
+                }
+            }
+            
+            requestAnimationFrame(animate);
+        });
+    });
+</script>
+{% endblock %}

@@ -2,6 +2,7 @@
 {% extends "base.html" %}
 {% block title %}Panel de Director{% endblock %}
 {% block content %}
+
 <div class="container py-4">
     <div class="row">
         <div class="col-md-6 mb-4">
@@ -66,7 +67,7 @@
                         </div>
                     </div>
 
-                    <!-- Reemplazar la sección de "Distribución por Estado" en dashboard.html con esto -->
+
 <div class="mt-3">
     <h6>Distribución por Estado:</h6>
     <div class="table-responsive">
@@ -153,7 +154,7 @@
                                         </td>
                                         <td>
                                             {% if iniciativa.get('ultimo_cambio_estado') %}
-                                                {{ iniciativa.get('ultimo_cambio_estado').strftime('%d/%m/%Y') }}
+                                                {{ iniciativa.get('ultimo_cambio_estado')|format_date }}
                                             {% else %}
                                                 -
                                             {% endif %}
@@ -198,6 +199,9 @@
                 </div>
                 <div class="card-body">
                     <div class="list-group">
+                        <a href="{{ url_for('director.view_stats') }}" class="list-group-item list-group-item-action">
+                            <i class="fas fa-chart-bar me-2"></i> Ver Estadísticas de Iniciativas
+                        </a>
                         <a href="{{ url_for('director.crear_colaborador') }}" class="list-group-item list-group-item-action">
                             <i class="fas fa-user-plus me-2"></i> Registrar Nuevo Colaborador
                         </a>
@@ -228,7 +232,7 @@
                     <p><strong>Rol:</strong> Director</p>
                     <p><strong>Último ingreso:</strong>
                         {% if current_user.last_login %}
-                            {{ current_user.last_login.strftime('%d/%m/%Y %H:%M:%S') }}
+                            {{ current_user.last_login|format_date('%d/%m/%Y %H:%M:%S') }}
                         {% else %}
                             Primer ingreso
                         {% endif %}

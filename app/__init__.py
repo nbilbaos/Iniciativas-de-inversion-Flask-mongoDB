@@ -189,6 +189,31 @@ def create_app():
         else:
             print('La colección "tasks" ya existe')
 
+    @app.template_filter('format_date')
+    def format_date_filter(date_value, format_string='%d/%m/%Y'):
+        """
+        Filtro Jinja para formatear fechas de manera segura.
+        Maneja tanto objetos datetime como strings, y casos nulos.
+
+        Uso en plantillas: {{ iniciativa.fecha_creacion|format_date }}
+        O con formato personalizado: {{ iniciativa.fecha_creacion|format_date('%d/%m/%Y %H:%M') }}
+        """
+        if not date_value:
+            return "-"
+
+        # Si ya es string, devolverlo como está
+        if isinstance(date_value, str):
+            return date_value
+
+        # Si es un objeto datetime, formatearlo
+        try:
+            return date_value.strftime(format_string)
+        except Exception:
+            # Si hay un error, devolver el valor como string o un valor por defecto
+            return str(date_value) if date_value else "-"
+
+
+
     # Registrar procesador de contexto para CSRF
     @app.context_processor
     def inject_csrf_token():

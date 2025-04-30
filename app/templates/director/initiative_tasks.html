@@ -120,7 +120,7 @@
                                     </div>
                                     <div>
                                         <i class="fas fa-calendar me-1"></i> Fecha:
-                                        {{ task.created_at.strftime('%d/%m/%Y %H:%M') }}
+                                        {{ fecha_variable|format_date('%d/%m/%Y %H:%M') }}
                                     </div>
                                     {% if task.assigned_to %}
                                         <div>
@@ -180,7 +180,7 @@
                                     </div>
                                     <div>
                                         <i class="fas fa-calendar me-1"></i> Fecha de creación:
-                                        {{ task.created_at.strftime('%d/%m/%Y %H:%M') }}
+                                        {{ fecha_variable|format_date('%d/%m/%Y %H:%M') }}
                                     </div>
                                     <div>
                                         <i class="fas fa-check-circle me-1"></i> Completada por:
@@ -188,7 +188,7 @@
                                             {% set completer = users.get(task.completed_by, {}) %}
                                             {{ completer.nombre if completer.nombre else completer.email or 'Usuario desconocido' }}
                                         </strong>
-                                        el {{ task.completed_at.strftime('%d/%m/%Y %H:%M') }}
+                                        el {{ fecha_variable|format_date('%d/%m/%Y %H:%M') }}
                                     </div>
                                     {% if task.assigned_to %}
                                         <div>
@@ -257,7 +257,7 @@
                                     </div>
                                     <div>
                                         <i class="fas fa-calendar me-1"></i> Fecha de creación:
-                                        {{ task.created_at.strftime('%d/%m/%Y %H:%M') }}
+                                        {{ fecha_variable|format_date('%d/%m/%Y %H:%M') }}
                                     </div>
                                     {% if task.is_completed and task.completed_by %}
                                         <div>
@@ -266,7 +266,7 @@
                                                 {% set completer = users.get(task.completed_by, {}) %}
                                                 {{ completer.nombre if completer.nombre else completer.email or 'Usuario desconocido' }}
                                             </strong>
-                                            el {{ task.completed_at.strftime('%d/%m/%Y %H:%M') }}
+                                            el {{ fecha_variable|format_date('%d/%m/%Y %H:%M') }}
                                         </div>
                                     {% endif %}
                                     {% if task.assigned_to %}
