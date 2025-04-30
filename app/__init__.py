@@ -5,6 +5,8 @@ from flask_wtf.csrf import CSRFProtect, generate_csrf
 import bcrypt
 import os
 from bson.objectid import ObjectId
+from .health import health_bp
+
 
 # Instancias globales
 mongo = PyMongo()
@@ -129,6 +131,8 @@ def create_app():
     from .colaborador import colaborador_bp
     app.register_blueprint(colaborador_bp)
 
+    app.register_blueprint(health_bp)
+
     # Crear usuario admin por defecto si no existe
     with app.app_context():
         try:
@@ -221,7 +225,11 @@ def create_app():
         # Si no está autenticado, redirigir a la página de login
         return redirect(url_for('auth.login'))
 
+
     # Configurar todas las colecciones requeridas
     setup_required_collections(app, mongo)
 
     return app
+
+
+

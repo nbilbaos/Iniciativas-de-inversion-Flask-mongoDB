@@ -1,5 +1,6 @@
 from app import create_app
 
+
 application = create_app()  # OJO: debe ser 'application', NO 'app'
 
 if __name__ == "__main__":
