@@ -50,6 +50,35 @@
         margin: 3px;
         display: inline-block;
     }
+    /* Nuevos estilos para el grid de estados */
+    .status-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+    }
+    .status-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 12px;
+        border-radius: 6px;
+        background-color: #f8f9fa;
+        align-items: center;
+    }
+    .status-item:hover {
+        background-color: #e9ecef;
+    }
+    .status-group {
+        margin-bottom: 15px;
+    }
+    .status-group-title {
+        font-size: 0.9rem;
+        font-weight: bold;
+        color: #6c757d;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        border-bottom: 1px solid #dee2e6;
+        padding-bottom: 5px;
+    }
 </style>
 {% endblock %}
 
@@ -107,20 +136,41 @@
         <div class="col-md-3 mb-4">
             <div class="card stats-card h-100">
                 <div class="card-body">
-                    <h5 class="card-title text-center">Estado de las Iniciativas</h5>
-                    <div class="mt-3">
-                        {% for estado, count in estados_data.items() %}
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span>{{ estado }}</span>
-                                <span class="badge bg-primary">{{ count }}</span>
-                            </div>
-                            <div class="progress mb-3" style="height: 8px;">
-                                <div class="progress-bar" role="progressbar" 
-                                     style="width: {{ (count / total_iniciativas * 100) if total_iniciativas > 0 else 0 }}%" 
-                                     aria-valuenow="{{ count }}" aria-valuemin="0" aria-valuemax="{{ total_iniciativas }}">
-                                </div>
-                            </div>
-                        {% endfor %}
+                    <h5 class="card-title text-center mb-3">Resumen de Estados</h5>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>No Iniciados:</span>
+                        <span class="badge bg-primary">{{ estados_data.get('No Iniciado', 0) }}</span>
+                    </div>
+                    <div class="progress mb-3" style="height: 8px;">
+                        <div class="progress-bar" role="progressbar"
+                             style="width: {{ (estados_data.get('No Iniciado', 0) / total_iniciativas * 100) if total_iniciativas > 0 else 0 }}%"
+                             aria-valuenow="{{ estados_data.get('No Iniciado', 0) }}" aria-valuemin="0" aria-valuemax="{{ total_iniciativas }}">
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>En Progreso:</span>
+                            {% set en_progreso = estados_data.get('Formulación', 0) + estados_data.get('Revisión', 0) + estados_data.get('Corrección', 0) + estados_data.get('Elegible', 0) %}
+                        <span class="badge bg-warning">{{ en_progreso }}</span>
+                    </div>
+                    <div class="progress mb-3" style="height: 8px;">
+                        <div class="progress-bar bg-warning" role="progressbar"
+                             style="width: {{ (en_progreso / total_iniciativas * 100) if total_iniciativas > 0 else 0 }}%"
+                             aria-valuenow="{{ en_progreso }}" aria-valuemin="0" aria-valuemax="{{ total_iniciativas }}">
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Finalizados:</span>
+                        {% set finalizados = estados_data.get('Finalizado', 0) + estados_data.get('Entregado', 0) %}
+                        <span class="badge bg-success">{{ finalizados }}</span>
+                    </div>
+                    <div class="progress mb-3" style="height: 8px;">
+                        <div class="progress-bar bg-success" role="progressbar"
+                             style="width: {{ (finalizados / total_iniciativas * 100) if total_iniciativas > 0 else 0 }}%"
+                             aria-valuenow="{{ finalizados }}" aria-valuemin="0" aria-valuemax="{{ total_iniciativas }}">
+                        </div>
+                    </div>
+                    <div class="text-center mt-3">
+                        <a href="#detailed-status" class="btn btn-sm btn-outline-primary">Ver detalle completo</a>
                     </div>
                 </div>
             </div>
@@ -176,6 +226,94 @@
                             </div>
                         {% endif %}
                     {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Nueva sección para el detalle de estados en formato grid -->
+    <div class="row mt-4" id="detailed-status">
+        <div class="col-12">
+            <div class="card stats-card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Detalle de Estados de Iniciativas</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Estados agrupados por categorías -->
+                    <div class="row">
+                        <!-- Etapas iniciales -->
+                        <div class="col-md-4 mb-4">
+                            <div class="status-group">
+                                <h6 class="status-group-title">Etapas Iniciales</h6>
+                                <div class="status-grid" style="grid-template-columns: 1fr;">
+                                    {% set etapas_iniciales = ['No Iniciado', 'Formulación', 'Revisión', 'Corrección'] %}
+                                    {% for estado in etapas_iniciales %}
+                                        <div class="status-item">
+                                            <span>{{ estado }}</span>
+                                            <span class="badge bg-primary">{{ estados_data.get(estado, 0) }}</span>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <div class="status-group">
+                                <h6 class="status-group-title">Etapas de Aprobación</h6>
+                                <div class="status-grid" style="grid-template-columns: 1fr;">
+                                    {% set etapas_aprobacion = ['Elegible', 'Financiado', 'Rechazado'] %}
+                                    {% for estado in etapas_aprobacion %}
+                                        <div class="status-item">
+                                            <span>{{ estado }}</span>
+                                            <span class="badge bg-warning">{{ estados_data.get(estado, 0) }}</span>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Etapas de Ejecución -->
+                        <div class="col-md-4 mb-4">
+                            <div class="status-group">
+                                <h6 class="status-group-title">Etapas de Ejecución</h6>
+                                <div class="status-grid" style="grid-template-columns: 1fr;">
+                                    {% set etapas_ejecucion = ['Firma Convenio', 'Preparación Bases', 'Licitación', 'Adjudicación'] %}
+                                    {% for estado in etapas_ejecucion %}
+                                        <div class="status-item">
+                                            <span>{{ estado }}</span>
+                                            <span class="badge bg-info">{{ estados_data.get(estado, 0) }}</span>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <div class="status-group">
+                                <h6 class="status-group-title">Etapas Finales</h6>
+                                <div class="status-grid" style="grid-template-columns: 1fr;">
+                                    {% set etapas_finales = ['En Ejecución', 'Ejecutado', 'Entregado', 'Finalizado'] %}
+                                    {% for estado in etapas_finales %}
+                                        <div class="status-item">
+                                            <span>{{ estado }}</span>
+                                            <span class="badge bg-success">{{ estados_data.get(estado, 0) }}</span>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Otros estados -->
+                        <div class="col-md-4 mb-4">
+                            <div class="status-group">
+                                <h6 class="status-group-title">Otros Estados</h6>
+                                <div class="status-grid" style="grid-template-columns: 1fr;">
+                                    {% set otros_estados = ['Ejecución Detenida', 'Indeterminado', 'nan', 'activo', 'Firma Contrato'] %}
+                                    {% for estado in otros_estados %}
+                                        <div class="status-item">
+                                            <span>{{ estado }}</span>
+                                            <span class="badge bg-secondary">{{ estados_data.get(estado, 0) }}</span>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -264,6 +402,62 @@
             }
         };
 
+        // Nuevo gráfico de torta para estados
+        const statusColors = [
+            '#007bff', '#6610f2', '#6f42c1', '#e83e8c', '#dc3545',
+            '#fd7e14', '#ffc107', '#28a745', '#20c997', '#17a2b8',
+            '#6c757d', '#343a40', '#87ceeb', '#90ee90', '#ffa07a'
+        ];
+
+        // Preparar datos para el gráfico de estados
+       const topStates = Object.entries({{ estados_data|tojson }})
+            .sort((a, b) => b[1] - a[1]) // Ordenar por cantidad descendente
+            .slice(0, 7); // Tomar los 7 principales estados
+
+
+        const statusLabels = topStates.map(item => item[0]);
+        const statusValues = topStates.map(item => item[1]);
+
+        const statusData = {
+            labels: statusLabels,
+            datasets: [{
+                data: statusValues,
+                backgroundColor: statusColors.slice(0, statusLabels.length),
+                hoverOffset: 4
+            }]
+        };
+
+        const statusConfig = {
+            type: 'pie',
+            data: statusData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            boxWidth: 12,
+                            font: {
+                                size: 10
+                            }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.raw || 0;
+                                const total = context.dataset.data.reduce((acc, val) => acc + val, 0);
+                                const percentage = Math.round((value / total) * 100);
+                                return `${label}: ${value} (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
         // Crear los gráficos
         new Chart(
             document.getElementById('monthlyTrendChart'),
@@ -275,6 +469,12 @@
             participacionConfig
         );
 
+        // Crear el nuevo gráfico de estados
+        new Chart(
+            document.getElementById('statusPieChart'),
+            statusConfig
+        );
+
         // Animación para los círculos de progreso
         const circles = document.querySelectorAll('.circle-progress');
         circles.forEach(circle => {
@@ -282,19 +482,19 @@
             let startPercent = 0;
             const duration = 1500;
             const startTime = performance.now();
-            
+
             function animate(currentTime) {
                 const elapsedTime = currentTime - startTime;
                 const progress = Math.min(elapsedTime / duration, 1);
                 const currentPercent = progress * percent;
-                
+
                 circle.style.setProperty('--percent', currentPercent);
-                
+
                 if (progress < 1) {
                     requestAnimationFrame(animate);
                 }
             }
-            
+
             requestAnimationFrame(animate);
         });
     });

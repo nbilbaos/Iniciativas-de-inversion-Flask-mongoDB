@@ -4,14 +4,32 @@
 
 {% block extra_css %}
 <style>
+    /* Fondo a pantalla completa */
+    body {
+        background: url("{{ url_for('static', filename='img/teatro_lanco.jpg') }}")
+                    no-repeat center center fixed;
+        background-size: cover;
+
+    }
+
+    /* Opcional: semitransparencia para que tu caja de login resalte */
     .login-container {
+        /* Fondo blanco semitransparente más marcado */
+        background-color: rgba(255, 255, 255, 0.6);
+        /* Desenfoca lo que queda detrás */
+        backdrop-filter: blur(1px);
+        -webkit-backdrop-filter: blur(8px);
+
+        /* Resto de estilos como antes */
         max-width: 450px;
         margin: 50px auto;
         padding: 30px;
         border-radius: 10px;
         box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-        background-color: #fff;
+        border: 1px solid rgba(255, 255, 255, 0.8);
+
     }
+
     .login-header {
         text-align: center;
         margin-bottom: 30px;
@@ -80,7 +98,6 @@
 {% block content %}
 <div class="login-container">
     <div class="login-header">
-
 
         <img src="{{ url_for('static', filename='img/secplan_logo2.png') }}" class="img-fluid" style="width: 230px;">
 

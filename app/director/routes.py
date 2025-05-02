@@ -1263,6 +1263,7 @@ def view_stats():
         estados_count = list(coll.aggregate(pipeline_estado))
         estados_data = {estado["_id"] or "No definido": estado["count"] for estado in estados_count}
 
+
         with_collaborators = coll.count_documents({"assigned_users": {"$exists": True, "$not": {"$size": 0}}})
         collaborators_percent = round((with_collaborators / total_iniciativas * 100) if total_iniciativas else 0)
 
@@ -1354,10 +1355,20 @@ def view_stats():
                     ]
                 })
 
+
             campos_stats[campo] = {
                 "count": count,
-                "percent": round((count / total_iniciativas * 100)) if total_iniciativas else 0
+                "percent": float(round((count / total_iniciativas * 100), 2)) if total_iniciativas else 0.0
+
             }
+
+        # al final de view_stats, antes del render_template
+        total_iniciativas = int(total_iniciativas)
+        collaborators_percent = float(collaborators_percent)
+        participation_percent = float(participation_percent)
+        # Fuerza todos los estados a enteros
+        estados_data = {str(k): int(v) for k, v in estados_data.items()}
+        # Y ya en tu campos_stats tú ya lo haces con int y float
 
         return render_template(
             'director/stats.html',
