@@ -250,6 +250,24 @@ def create_app():
         # Si no está autenticado, redirigir a la página de login
         return redirect(url_for('auth.login'))
 
+    # Añadir en app/__init__.py o en un archivo utils.py
+
+    import base64
+
+    def get_image_as_base64(file_path):
+        """Convierte una imagen a base64 para incluirla en el PDF."""
+        try:
+            with open(file_path, "rb") as image_file:
+                return base64.b64encode(image_file.read()).decode('utf-8')
+        except Exception as e:
+            print(f"Error al convertir imagen a base64: {str(e)}")
+            return ""
+
+    # Registrar la función en Jinja2
+    @app.context_processor
+    def utility_processor():
+        return dict(get_image_as_base64=get_image_as_base64)
+
 
     # Configurar todas las colecciones requeridas
     setup_required_collections(app, mongo)

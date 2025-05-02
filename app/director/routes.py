@@ -7,7 +7,14 @@ from flask_login import login_required, current_user
 from bson.objectid import ObjectId
 import bcrypt
 from datetime import datetime
-
+from io import BytesIO
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Image, Spacer, ListFlowable, ListItem
+from reportlab.lib.units import inch
+import base64
+import os
 from . import director_bp
 from ..auth.utils import director_required
 from .. import mongo, csrf
@@ -1391,3 +1398,337 @@ def view_stats():
         print(f"Error al generar estadísticas: {traceback.format_exc()}")
         flash(f'Error al cargar estadísticas: {str(e)}', 'danger')
         return redirect(url_for('director.dashboard'))
+
+
+# En app/director/routes.py
+
+# En app/director/routes.py y app/colaborador/routes.py
+
+@director_bp.route('/iniciativas/<iniciativa_id>/minuta', methods=['GET', 'POST'])
+@login_required
+@director_required
+def generate_minuta(iniciativa_id):
+    """Generar minuta de la iniciativa."""
+    try:
+        # Obtener la iniciativa
+        collection_name = current_app.config['INITIATIVES_COLLECTION']
+        parts = collection_name.split('.')
+        if len(parts) > 1:
+            coll = mongo.db[parts[0]][parts[1]]
+        else:
+            coll = mongo.db[collection_name]
+
+        iniciativa = coll.find_one({"_id": ObjectId(iniciativa_id)})
+        if not iniciativa:
+            flash('Iniciativa no encontrada', 'danger')
+            return redirect(url_for('director.list_initiatives'))
+
+        # Convertir ObjectId a string
+        iniciativa_json = {}
+        for key, value in iniciativa.items():
+            if key == '_id':
+                iniciativa_json[key] = str(value)
+            elif isinstance(value, ObjectId):
+                iniciativa_json[key] = str(value)
+            else:
+                iniciativa_json[key] = value
+
+        # Obtener archivos asociados a la iniciativa (para imágenes)
+        files = list(mongo.db.files.find({
+            "initiative_id": iniciativa_id,
+            "active": True,
+            "file_type": "image"  # Filtrar solo imágenes
+        }))
+
+        # Convertir ObjectId a string en los archivos
+        files_json = []
+        for file in files:
+            file_json = {}
+            for key, value in file.items():
+                if key == '_id' or isinstance(value, ObjectId):
+                    file_json[key] = str(value)
+                else:
+                    file_json[key] = value
+            files_json.append(file_json)
+
+        # Si se envió el formulario para generar la minuta
+        if request.method == 'POST':
+            selected_fields = request.form.getlist('fields')
+            field_labels = {}
+
+            # Obtener las etiquetas personalizadas para cada campo
+            for field in selected_fields:
+                field_labels[field] = request.form.get(f"label_{field}", field.replace('_', ' ').capitalize())
+
+            # Obtener imágenes seleccionadas
+            selected_images = request.form.getlist('images')
+
+            # En app/director/routes.py y app/colaborador/routes.py (función generate_minuta)
+
+            # Dentro del bloque if request.method == 'POST':
+            # Añadir debajo de la parte donde se procesan las imágenes seleccionadas
+
+            # Obtener configuración de la sección "El proyecto contempla"
+            show_project_section = 'show_project_section' in request.form
+            project_section_title = request.form.get('project_section_title', 'El proyecto contempla:')
+            project_features = request.form.get('project_features', '')
+
+            # Actualizar la configuración de minuta
+            minuta_config = {
+                "selected_fields": selected_fields,
+                "field_labels": field_labels,
+                "selected_images": selected_images,
+                "title": request.form.get('minuta_title', 'MINUTA PROYECTO'),
+                "show_project_section": show_project_section,
+                "project_section_title": project_section_title,
+                "project_features": project_features,
+                "updated_at": datetime.utcnow(),
+                "updated_by": current_user.get_id()
+            }
+
+            # Actualizar la iniciativa con la configuración de minuta
+            coll.update_one(
+                {"_id": ObjectId(iniciativa_id)},
+                {"$set": {"minuta_config": minuta_config}}
+            )
+
+            # Si el botón presionado fue "preview", redirigir a la vista previa
+            if 'preview' in request.form:
+                return redirect(url_for('director.preview_minuta', iniciativa_id=iniciativa_id))
+
+            # Si fue "download", generar el PDF
+            if 'download' in request.form:
+                return redirect(url_for('director.download_minuta', iniciativa_id=iniciativa_id))
+
+            flash('Configuración de minuta guardada correctamente', 'success')
+            return redirect(url_for('director.generate_minuta', iniciativa_id=iniciativa_id))
+
+        # Para GET, cargar la configuración guardada (si existe)
+        minuta_config = iniciativa.get('minuta_config', {})
+
+        return render_template(
+            'director/minuta_generator.html',
+            iniciativa=iniciativa_json,
+            files=files_json,
+            minuta_config=minuta_config,
+            iniciativa_id=iniciativa_id
+        )
+    except Exception as e:
+        import traceback
+        print(f"Error en generate_minuta: {traceback.format_exc()}")
+        flash(f'Error al generar minuta: {str(e)}', 'danger')
+        return redirect(url_for('director.view_initiative', iniciativa_id=iniciativa_id))
+
+
+@director_bp.route('/iniciativas/<iniciativa_id>/minuta/preview')
+@login_required
+@director_required
+def preview_minuta(iniciativa_id):
+    """Vista previa de la minuta."""
+    try:
+        # Obtener la iniciativa
+        collection_name = current_app.config['INITIATIVES_COLLECTION']
+        parts = collection_name.split('.')
+        if len(parts) > 1:
+            coll = mongo.db[parts[0]][parts[1]]
+        else:
+            coll = mongo.db[collection_name]
+
+        iniciativa = coll.find_one({"_id": ObjectId(iniciativa_id)})
+        if not iniciativa:
+            flash('Iniciativa no encontrada', 'danger')
+            return redirect(url_for('director.list_initiatives'))
+
+        # Obtener configuración de minuta
+        minuta_config = iniciativa.get('minuta_config', {})
+        if not minuta_config:
+            flash('No hay configuración de minuta guardada', 'warning')
+            return redirect(url_for('director.generate_minuta', iniciativa_id=iniciativa_id))
+
+        # Obtener imágenes seleccionadas
+        selected_image_ids = minuta_config.get('selected_images', [])
+        images = list(mongo.db.files.find({
+            "_id": {"$in": [ObjectId(img_id) for img_id in selected_image_ids if img_id]},
+            "active": True
+        }))
+
+        return render_template(
+            'director/minuta_preview.html',
+            iniciativa=iniciativa,
+            minuta_config=minuta_config,
+            images=images,
+            iniciativa_id=iniciativa_id
+        )
+    except Exception as e:
+        flash(f'Error al previsualizar minuta: {str(e)}', 'danger')
+        return redirect(url_for('director.generate_minuta', iniciativa_id=iniciativa_id))
+
+
+@director_bp.route('/iniciativas/<iniciativa_id>/minuta/download')
+@login_required
+@director_required
+def download_minuta(iniciativa_id):
+    """Descargar minuta como PDF usando ReportLab."""
+    try:
+        # Obtener la iniciativa
+        collection_name = current_app.config['INITIATIVES_COLLECTION']
+        parts = collection_name.split('.')
+        if len(parts) > 1:
+            coll = mongo.db[parts[0]][parts[1]]
+        else:
+            coll = mongo.db[collection_name]
+
+        iniciativa = coll.find_one({"_id": ObjectId(iniciativa_id)})
+        if not iniciativa:
+            flash('Iniciativa no encontrada', 'danger')
+            return redirect(url_for('director.list_initiatives'))
+
+        # Obtener configuración de minuta
+        minuta_config = iniciativa.get('minuta_config', {})
+        if not minuta_config:
+            flash('No hay configuración de minuta guardada', 'warning')
+            return redirect(url_for('director.generate_minuta', iniciativa_id=iniciativa_id))
+
+        # Obtener imágenes seleccionadas
+        selected_image_ids = minuta_config.get('selected_images', [])
+        images = list(mongo.db.files.find({
+            "_id": {"$in": [ObjectId(img_id) for img_id in selected_image_ids if img_id]},
+            "active": True
+        }))
+
+        # Generar PDF con ReportLab
+        buffer = BytesIO()
+
+        # Configuración del documento
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=letter,
+            rightMargin=72,
+            leftMargin=72,
+            topMargin=72,
+            bottomMargin=72
+        )
+
+        # Estilos
+        styles = getSampleStyleSheet()
+        title_style = styles['Title']
+        normal_style = styles['Normal']
+
+        # Lista de elementos para el PDF
+        elements = []
+
+        # Título
+        elements.append(Paragraph(minuta_config.get('title', 'MINUTA PROYECTO'), title_style))
+        elements.append(Spacer(1, 0.25 * inch))
+
+        # Tabla de información
+        data = []
+        selected_fields = minuta_config.get('selected_fields', [])
+        field_labels = minuta_config.get('field_labels', {})
+
+        for field in selected_fields:
+            label = field_labels.get(field, field.replace('_', ' ').capitalize())
+            value = str(iniciativa.get(field, ''))
+            data.append([label, value])
+
+        if data:
+            table = Table(data, colWidths=[2 * inch, 4 * inch])
+            table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
+                ('TEXTCOLOR', (0, 0), (0, -1), colors.black),
+                ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+                ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 10),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ]))
+            elements.append(table)
+            elements.append(Spacer(1, 0.25 * inch))
+
+        # Sección "El proyecto contempla" (configurable)
+        if minuta_config.get('show_project_section', True):
+            section_title = minuta_config.get('project_section_title', 'El proyecto contempla:')
+            elements.append(Paragraph(f"<b>{section_title}</b>", normal_style))
+            elements.append(Spacer(1, 0.1 * inch))
+
+            # Lista de elementos con viñetas
+            bullet_items = []
+
+            project_features = minuta_config.get('project_features', '')
+            if project_features:
+                feature_lines = project_features.split('\n')
+                for line in feature_lines:
+                    line = line.strip()
+                    if line:
+                        # Eliminar el emoji de verificación si ya está presente
+                        if line.startswith('✅'):
+                            line = line[1:].strip()
+                        bullet_items.append(ListItem(Paragraph("✅ " + line, normal_style)))
+            elif iniciativa.get('descripcion'):
+                desc_lines = iniciativa.get('descripcion').split('\n')
+                for line in desc_lines:
+                    if line.strip():
+                        # Eliminar el emoji de verificación si ya está presente
+                        if line.strip().startswith('✅'):
+                            line = line[1:].strip()
+                        bullet_items.append(ListItem(Paragraph("✅ " + line.strip(), normal_style)))
+            else:
+                bullet_items.append(ListItem(Paragraph("✅ Construcción y habilitación de infraestructura", normal_style)))
+
+            if bullet_items:
+                bullets = ListFlowable(
+                    bullet_items,
+                    bulletType='bullet',
+                    start='',
+                    bulletFontName='Helvetica',
+                    bulletFontSize=10
+                )
+                elements.append(bullets)
+
+            elements.append(Spacer(1, 0.25 * inch))
+
+        # Imágenes
+        if images:
+            for image_doc in images:
+                try:
+                    img_path = image_doc.get('file_path')
+                    if img_path and os.path.exists(img_path):
+                        img = Image(img_path)
+                        # Ajustar tamaño máximo
+                        max_width = 6 * inch
+                        max_height = 4 * inch
+                        if img.drawWidth > max_width:
+                            ratio = max_height / img.drawHeight
+                            img.drawWidth = max_width
+                            img.drawHeight = img.drawHeight * ratio
+                        elements.append(img)
+                        elements.append(Spacer(1, 0.1 * inch))
+                except Exception as img_error:
+                    print(f"Error al procesar imagen {image_doc.get('_id')}: {str(img_error)}")
+
+        # Construir el documento
+        doc.build(elements)
+
+        # Obtener el PDF del buffer
+        pdf_data = buffer.getvalue()
+        buffer.close()
+
+        # Nombre del archivo
+        proyecto_nombre = iniciativa.get('nombre_iniciativa', iniciativa.get('nombre', 'proyecto'))
+        safe_name = "".join([c for c in proyecto_nombre if c.isalpha() or c.isdigit() or c == ' ']).rstrip()
+        filename = f"MINUTA_{safe_name}_{datetime.now().strftime('%Y%m%d')}.pdf"
+
+        # Crear respuesta con el PDF
+        response = current_app.response_class(
+            pdf_data,
+            mimetype='application/pdf',
+            headers={'Content-Disposition': f'attachment;filename={filename}'}
+        )
+
+        return response
+    except Exception as e:
+        import traceback
+        print(f"Error al descargar minuta: {traceback.format_exc()}")
+        flash(f'Error al descargar minuta: {str(e)}', 'danger')
+        return redirect(url_for('director.generate_minuta', iniciativa_id=iniciativa_id))

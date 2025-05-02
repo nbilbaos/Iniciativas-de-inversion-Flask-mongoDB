@@ -1,0 +1,403 @@
+<!-- app/templates/director/minuta_generator.html -->
+{% extends "base.html" %}
+
+{% block title %}Generador de Minuta{% endblock %}
+
+{% block extra_css %}
+<style>
+    .field-selector {
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        padding: 10px;
+        margin-bottom: 20px;
+    }
+
+    .field-customizer {
+        display: none;
+        margin-top: 15px;
+    }
+
+    .preview-box {
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        padding: 15px;
+        margin-top: 20px;
+        background-color: #f9f9f9;
+    }
+
+    .image-thumbnail {
+        width: 100px;
+        height: 100px;
+        object-fit: cover;
+        margin: 5px;
+        border: 2px solid transparent;
+        cursor: pointer;
+    }
+
+    .image-thumbnail.selected {
+        border-color: #007bff;
+    }
+
+    .minuta-title {
+        font-size: 1.2rem;
+        font-weight: bold;
+        margin-bottom: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Generador de Minuta</h1>
+        <div>
+            <a href="{{ url_for('director.view_initiative', iniciativa_id=iniciativa_id) }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Volver a la Iniciativa
+            </a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Configurar Minuta</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST" id="minutaForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+                <!-- Título de la minuta -->
+                <div class="mb-4">
+                    <label for="minuta_title" class="form-label">Título de la Minuta</label>
+                    <input type="text" class="form-control" id="minuta_title" name="minuta_title"
+                           value="{{ minuta_config.get('title', 'MINUTA PROYECTO: ' + (iniciativa.get('nombre_iniciativa', iniciativa.get('nombre', 'SIN NOMBRE'))) | upper) }}">
+                </div>
+
+                <div class="row">
+                    <!-- Selector de campos -->
+                    <div class="col-md-6">
+                        <div class="field-selector">
+                            <h5>Seleccionar Campos</h5>
+                            <p class="text-muted">Seleccione los campos que desea incluir en la minuta.</p>
+
+                            <div class="row">
+                                {% set selected_fields = minuta_config.get('selected_fields', []) %}
+                                {% for key, value in iniciativa.items() if key != '_id' and key != 'assigned_users' and
+                                key != 'minuta_config' %}
+                                <div class="col-md-6 mb-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input field-checkbox" type="checkbox"
+                                               name="fields" value="{{ key }}" id="field_{{ key }}"
+                                               {% if key in selected_fields %}checked{% endif %}
+                                               onchange="toggleFieldCustomizer('{{ key }}')">
+                                        <label class="form-check-label" for="field_{{ key }}">
+                                            {{ key|replace('_', ' ')|capitalize }}
+                                        </label>
+                                    </div>
+
+                                    <!-- Personalizador de etiqueta -->
+                                    <div class="field-customizer" id="customizer_{{ key }}"
+                                         {% if key in selected_fields %}style="display:block;" {% endif %}>
+                                        <div class="input-group mt-1 mb-3">
+                                            <span class="input-group-text">Mostrar como</span>
+                                            <input type="text" class="form-control"
+                                                   name="label_{{ key }}"
+                                                   value="{{ minuta_config.get('field_labels', {}).get(key, key|replace('_', ' ')|capitalize) }}">
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Selector de imágenes -->
+                    <div class="col-md-6">
+                        <div class="field-selector">
+                            <h5>Seleccionar Imágenes</h5>
+                            <p class="text-muted">Seleccione las imágenes que desea incluir en la minuta.</p>
+
+                            {% if files %}
+                            <div class="row">
+                                {% set selected_images = minuta_config.get('selected_images', []) %}
+                                {% for file in files %}
+                                <div class="col-md-4 col-sm-6 mb-3 text-center">
+                                    <div class="image-selection">
+                                        <img src="{{ url_for('colaborador.download_file', iniciativa_id=iniciativa_id, file_id=file._id) }}"
+                                             class="image-thumbnail {{ 'selected' if file._id|string in selected_images else '' }}"
+                                             data-file-id="{{ file._id }}"
+                                             onclick="toggleImageSelection(this)">
+                                        <div class="form-check mt-1">
+                                            <input class="form-check-input image-checkbox" type="checkbox"
+                                                   name="images" value="{{ file._id }}" id="img_{{ file._id }}"
+                                                   {% if file._id|string in selected_images %}checked{% endif %}
+                                                   onchange="syncImageCheckbox(this)">
+                                            <label class="form-check-label small" for="img_{{ file._id }}">
+                                                {{ file.original_filename|truncate(15) }}
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i> No hay imágenes disponibles para esta
+                                iniciativa.
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modificaciones en app/templates/director/minuta_generator.html -->
+
+                <!-- Añadir esta sección después del selector de imágenes -->
+                <div class="col-md-12 mt-4">
+                    <div class="field-selector">
+                        <h5>Personalizar sección "El proyecto contempla"</h5>
+                        <p class="text-muted">Configure la sección de características del proyecto.</p>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="show_project_section"
+                                       name="show_project_section"
+                                       {% if minuta_config.get('show_project_section', True) %}checked{% endif %}>
+                                <label class="form-check-label" for="show_project_section">
+                                    Mostrar sección "El proyecto contempla"
+                                </label>
+                            </div>
+                        </div>
+
+                        <div id="project_section_config" {% if not minuta_config.get(
+                        'show_project_section', True) %}style="display:none;"{% endif %}>
+                        <div class="mb-3">
+                            <label for="project_section_title" class="form-label">Título de la sección</label>
+                            <input type="text" class="form-control" id="project_section_title"
+                                   name="project_section_title"
+                                   value="{{ minuta_config.get('project_section_title', 'El proyecto contempla:') }}">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="project_features" class="form-label">Características del proyecto</label>
+                            <div class="mb-2">
+                                <small class="text-muted">Ingrese una característica por línea. Cada línea se mostrará
+                                    con un marcador de verificación (✅).</small>
+                            </div>
+                            <textarea class="form-control" id="project_features" name="project_features" rows="6">{{ minuta_config.get('project_features', iniciativa.get('descripcion', ''))|replace('✅ ', '') }}</textarea>
+                        </div>
+                    </div>
+                </div>
+
+
+                <!-- Vista previa de la minuta -->
+                <div class="preview-box mt-4">
+                    <h5>Vista Previa de Campos Seleccionados</h5>
+                    <div id="previewContent" class="mt-3">
+                        <p class="minuta-title" id="preview_title">{{ minuta_config.get('title', 'MINUTA PROYECTO: ' +
+                            (iniciativa.get('nombre_iniciativa', iniciativa.get('nombre', 'SIN NOMBRE'))) | upper)
+                            }}</p>
+
+                        <table class="table table-bordered">
+                            <tbody id="preview_fields">
+                            {% for field in selected_fields %}
+                            <tr>
+                                <th style="width: 30%">{{ minuta_config.get('field_labels', {}).get(field,
+                                    field|replace('_', '
+                                    ')|capitalize) }}
+                                </th>
+                                <td>{{ iniciativa.get(field, '') }}</td>
+                            </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+
+                        <!-- Modificación para la sección de vista previa de imágenes en minuta_generator.html -->
+
+                        <div id="preview_images" class="row mt-3">
+                            {% for img_id in minuta_config.get('selected_images', []) %}
+                            {% for file in files %}
+                            {% if file._id|string == img_id %}
+                            <div class="col-md-4 text-center mb-3">
+                                <div class="text-center"
+                                     style="height: 200px; display: flex; align-items: center; justify-content: center; border: 1px solid #ddd; padding: 5px;">
+                                    <img src="{{ url_for('colaborador.download_file', iniciativa_id=iniciativa_id, file_id=file._id) }}"
+                                         style="max-width: 100%; max-height: 190px; object-fit: contain;">
+                                </div>
+                                <p class="small mt-1">{{ file.original_filename }}</p>
+                            </div>
+                            {% endif %}
+                            {% endfor %}
+                            {% endfor %}
+                        </div>
+
+                        <div id="preview_project_section" class="mt-3" {% if not minuta_config.get(
+                        'show_project_section', True) %}style="display:none;"{% endif %}>
+                        <p><strong id="preview_project_title">{{ minuta_config.get('project_section_title', 'El proyecto
+                            contempla:') }}</strong></p>
+                        <ul class="checkmark-list" id="preview_features_list">
+                            {% set features = minuta_config.get('project_features', iniciativa.get('descripcion', ''))
+                            %}
+                            {% set feature_lines = features.split('\n') %}
+                            {% for line in feature_lines if line.strip() %}
+                            <li>✅ {{ line.strip().replace('✅ ', '') }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Botones de acción -->
+        <div class="mt-4 d-flex justify-content-between">
+            <div>
+                <button type="submit" class="btn btn-primary" name="save">
+                    <i class="fas fa-save me-2"></i>Guardar Configuración
+                </button>
+            </div>
+            <div>
+                <button type="submit" class="btn btn-info me-2" name="preview">
+                    <i class="fas fa-eye me-2"></i>Vista Previa
+                </button>
+                <button type="submit" class="btn btn-success" name="download">
+                    <i class="fas fa-file-pdf me-2"></i>Descargar PDF
+                </button>
+            </div>
+        </div>
+        </form>
+    </div>
+</div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Función para mostrar/ocultar la configuración de la sección "El proyecto contempla"
+    document.getElementById('show_project_section').addEventListener('change', function () {
+        const sectionConfig = document.getElementById('project_section_config');
+        if (this.checked) {
+            sectionConfig.style.display = 'block';
+        } else {
+            sectionConfig.style.display = 'none';
+        }
+        updatePreview();
+    });
+    // Actualizar para manejar los cambios en la sección "El proyecto contempla"
+    document.getElementById('project_section_title').addEventListener('input', updatePreview);
+    document.getElementById('project_features').addEventListener('input', updatePreview);
+
+
+    // Función para mostrar/ocultar el personalizador de etiquetas
+    function toggleFieldCustomizer(fieldName) {
+        const checkbox = document.getElementById(`field_${fieldName}`);
+        const customizer = document.getElementById(`customizer_${fieldName}`);
+
+        if (checkbox.checked) {
+            customizer.style.display = 'block';
+        } else {
+            customizer.style.display = 'none';
+        }
+
+        updatePreview();
+    }
+
+    // Función para alternar selección de imágenes
+    function toggleImageSelection(imgElement) {
+        const fileId = imgElement.dataset.fileId;
+        const checkbox = document.getElementById(`img_${fileId}`);
+
+        imgElement.classList.toggle('selected');
+        checkbox.checked = !checkbox.checked;
+
+        updatePreview();
+    }
+
+    // Función para sincronizar el estado del checkbox con la imagen
+    function syncImageCheckbox(checkbox) {
+        const fileId = checkbox.value;
+        const imgElement = document.querySelector(`.image-thumbnail[data-file-id="${fileId}"]`);
+
+        if (checkbox.checked) {
+            imgElement.classList.add('selected');
+        } else {
+            imgElement.classList.remove('selected');
+        }
+
+        updatePreview();
+    }
+
+    // Función para actualizar la vista previa
+    function updatePreview() {
+        // Actualizar título
+        const titleInput = document.getElementById('minuta_title');
+        const previewTitle = document.getElementById('preview_title');
+        previewTitle.textContent = titleInput.value;
+
+        // Actualizar campos
+        const previewFields = document.getElementById('preview_fields');
+        previewFields.innerHTML = '';
+
+        const selectedCheckboxes = document.querySelectorAll('.field-checkbox:checked');
+        selectedCheckboxes.forEach(checkbox => {
+            const fieldName = checkbox.value;
+            const labelInput = document.querySelector(`input[name="label_${fieldName}"]`);
+            const fieldValue = getFieldValue(fieldName);
+
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <th style="width: 30%">${labelInput.value}</th>
+                <td>${fieldValue}</td>
+            `;
+            previewFields.appendChild(row);
+        });
+
+        // Actualizar sección "El proyecto contempla"
+        const showProjectSection = document.getElementById('show_project_section').checked;
+        const projectSectionTitle = document.getElementById('project_section_title').value;
+        const projectFeatures = document.getElementById('project_features').value;
+
+        // Actualizar vista previa de la sección
+        const projectSectionPreview = document.getElementById('preview_project_section');
+        if (showProjectSection) {
+            projectSectionPreview.style.display = 'block';
+            document.getElementById('preview_project_title').textContent = projectSectionTitle;
+
+            // Actualizar lista de características
+            const featuresList = document.getElementById('preview_features_list');
+            featuresList.innerHTML = '';
+
+            const features = projectFeatures.split('\n');
+            features.forEach(feature => {
+                if (feature.trim()) {
+                    const li = document.createElement('li');
+                    li.innerHTML = `✅ ${feature.trim()}`;
+                    featuresList.appendChild(li);
+                }
+            });
+        } else {
+            projectSectionPreview.style.display = 'none';
+        }
+        // Actualizar imágenes (esta parte es más compleja y puede requerir cargar dinámicamente)
+        // En una implementación real, podrías recargar las imágenes mediante AJAX
+    }
+
+    // Función auxiliar para obtener el valor de un campo de la iniciativa
+    function getFieldValue(fieldName) {
+        // En una implementación real, podrías usar AJAX para obtener el valor actualizado
+        // Por ahora, usaremos los valores que ya tenemos en la página
+        const iniciativa = JSON.parse('{{ iniciativa|tojson|safe }}');
+        return iniciativa[fieldName] || '';
+    }
+
+    // Inicialización
+    document.addEventListener('DOMContentLoaded', function () {
+        // Configurar event listener para el campo de título
+        document.getElementById('minuta_title').addEventListener('input', updatePreview);
+
+        // Configurar event listeners para los campos personalizados
+        document.querySelectorAll('input[name^="label_"]').forEach(input => {
+            input.addEventListener('input', updatePreview);
+        });
+    });
+
+
+</script>
+{% endblock %}
