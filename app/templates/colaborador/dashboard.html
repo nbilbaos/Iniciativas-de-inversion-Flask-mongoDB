@@ -1,154 +1,499 @@
 {% extends "base.html" %}
 
-{% block title %}Panel de Colaborador{% endblock %}
+{% block title %}Panel de Control | Gestión de Iniciativas{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Estilos generales */
+    .dashboard-container {
+        background-color: #f8f9fa;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 30px;
+    }
+    
+    /* Indicador de tareas pendientes */
+    .task-badge {
+        position: relative;
+        top: -2px;
+        font-size: 0.75rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    /* Tarjetas de estadísticas */
+    .stats-card {
+        border: none;
+        border-radius: 10px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        transition: transform 0.3s, box-shadow 0.3s;
+        height: 100%;
+    }
+    .stats-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+    }
+    .stats-icon {
+        font-size: 2.5rem;
+        opacity: 0.6;
+    }
+
+    /* Tarjetas de iniciativas */
+    .initiative-card {
+        border: none;
+        border-radius: 10px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        transition: transform 0.3s, box-shadow 0.3s;
+        height: 100%;
+        margin-bottom: 20px;
+    }
+    .initiative-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+    }
+    .initiative-card .card-header {
+        border-radius: 10px 10px 0 0;
+        border: none;
+    }
+    .initiative-card .card-footer {
+        border-radius: 0 0 10px 10px;
+        border-top: 1px solid rgba(0, 0, 0, 0.05);
+        background-color: transparent;
+    }
+    
+    /* Tarjetas de tareas */
+    .task-card {
+        border-left: 4px solid #007bff;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        transition: all 0.2s;
+    }
+    .task-card:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    .task-card.completed {
+        border-left-color: #28a745;
+        background-color: rgba(40, 167, 69, 0.05);
+    }
+    
+    /* Progreso */
+    .progress {
+        height: 8px;
+        border-radius: 5px;
+        margin-bottom: 5px;
+    }
+    
+    /* Pestañas */
+    .nav-tabs .nav-link {
+        border-radius: 8px 8px 0 0;
+        font-weight: 500;
+    }
+    .nav-tabs .nav-link.active {
+        background-color: #f8f9fa;
+        border-bottom-color: #f8f9fa;
+    }
+    
+    /* Acciones rápidas */
+    .quick-action {
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        transition: all 0.2s;
+    }
+    .quick-action:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+    .quick-action-icon {
+        font-size: 2rem;
+        margin-right: 15px;
+        opacity: 0.7;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container py-4">
+<div class="container-fluid py-4">
+    <!-- Header con información del usuario y fecha -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2 class="mb-0">¡Bienvenido, {{ user_data.nombre or user_data.email }}!</h2>
+            <p class="text-muted">{{ now.strftime('%A, %d de %B de %Y') }}</p>
+        </div>
+        <div class="col-md-4 text-md-right text-left">
+            <a href="{{ url_for('colaborador.profile') }}" class="btn btn-outline-primary">
+                <i class="fas fa-user-circle me-2"></i> Ver Perfil
+            </a>
+        </div>
+    </div>
 
-
-
-    <!-- Acciones rápidas & perfil -->
-    <div class="row mt-4">
-        <div class="col-md-6 mb-4">
-            <div class="card h-100">
-                <div class="card-header">
-                    <h5 class="mb-0">Acciones Rápidas</h5>
-                </div>
-                <div class="card-body">
-                    <div class="list-group">
-                        <a href="{{ url_for('colaborador.tasks') }}" class="list-group-item list-group-item-action">
-                            <i class="fas fa-list-alt me-2"></i> Ver Mis Tareas
-                        </a>
-                        <a href="{{ url_for('colaborador.profile') }}" class="list-group-item list-group-item-action">
-                            <i class="fas fa-user me-2"></i> Mi Perfil
-                        </a>
-                        <a href="{{ url_for('auth.change_password') }}" class="list-group-item list-group-item-action">
-                            <i class="fas fa-key me-2"></i> Cambiar Mi Contraseña
-                        </a>
-                        <a href="{{ url_for('colaborador.my_initiatives') }}" class="list-group-item list-group-item-action">
-                            <i class="fas fa-project-diagram me-2"></i> Mis Iniciativas
-                        </a>
+    <!-- Tarjetas de estadísticas -->
+    <div class="row mb-4">
+        <div class="col-md-3 col-sm-6 mb-4">
+            <div class="card stats-card">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted mb-1">Iniciativas</h6>
+                        <h3 class="mb-0">{{ stats.total_iniciativas }}</h3>
+                    </div>
+                    <div class="stats-icon text-primary">
+                        <i class="fas fa-project-diagram"></i>
                     </div>
                 </div>
             </div>
         </div>
-
-        <div class="col-md-6 mb-4">
-            <div class="card h-100">
-                <div class="card-header bg-info text-white">
-                    <h5 class="mb-0">Información del Usuario</h5>
+        <div class="col-md-3 col-sm-6 mb-4">
+            <div class="card stats-card">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted mb-1">Tareas</h6>
+                        <h3 class="mb-0">{{ stats.total_tasks }}</h3>
+                    </div>
+                    <div class="stats-icon text-warning">
+                        <i class="fas fa-tasks"></i>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <p><strong>Correo Electrónico:</strong> {{ user_data.email }}</p>
-                    <p><strong>Nombre:</strong> {{ user_data.nombre or 'No especificado' }}</p>
-                    <p><strong>RUT:</strong> {{ user_data.rut or 'No especificado' }}</p>
-                    <p><strong>Títulos:</strong>
-                        {% if user_data.titulos %}
-                            {% for titulo in user_data.titulos %}
-                                <span class="badge bg-info">{{ titulo }}</span>
-                            {% endfor %}
-                        {% else %}
-                            No especificados
-                        {% endif %}
-                    </p>
-                    <p><strong>Último Ingreso:</strong>
-                        {% if user_data.last_login %}
-                            {{ user_data.last_login.strftime('%d/%m/%Y %H:%M:%S') }}
-                        {% else %}
-                            Primer ingreso
-                        {% endif %}
-                    </p>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-4">
+            <div class="card stats-card">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted mb-1">Completadas</h6>
+                        <h3 class="mb-0">{{ stats.completed_tasks }}</h3>
+                    </div>
+                    <div class="stats-icon text-success">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-4">
+            <div class="card stats-card">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted mb-1">Pendientes</h6>
+                        <h3 class="mb-0">{{ stats.pending_tasks }}</h3>
+                    </div>
+                    <div class="stats-icon text-danger">
+                        <i class="fas fa-hourglass-half"></i>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Iniciativas activas -->
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">Iniciativas Activas</h5>
+    <!-- Contenido principal en pestañas -->
+    <div class="row">
+        <div class="col-lg-8">
+            <!-- Pestañas para iniciativas y tareas -->
+            <div class="card mb-4">
+                <div class="card-header bg-white border-bottom-0 pb-0">
+                    <ul class="nav nav-tabs" id="mainTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link active" id="initiatives-tab" data-bs-toggle="tab" href="#initiatives" role="tab" aria-controls="initiatives" aria-selected="true">
+                                <i class="fas fa-project-diagram me-2"></i>Mis Iniciativas
+                            </a>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link" id="tasks-tab" data-bs-toggle="tab" href="#tasks" role="tab" aria-controls="tasks" aria-selected="false">
+                                <i class="fas fa-tasks me-2"></i>Mis Tareas
+                            </a>
+                        </li>
+                    </ul>
                 </div>
                 <div class="card-body">
-                    {% if iniciativas %}
-                        <div class="row">
-                            {% for iniciativa in iniciativas %}
-                                <div class="col-md-6 mb-3">
-                                    <div class="card h-100 border-success">
-                                        <div class="card-header bg-success text-white">
-                                            <h6 class="mb-0">
-                                                <a href="{{ url_for('colaborador.workbench', iniciativa_id=iniciativa.id) }}"
-                                                   class="text-white text-decoration-none">
-                                                    <span title="{{ iniciativa.nombre }}"
-                                                          style="display:inline-block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;">
-                                                        {{ iniciativa.nombre }}
-                                                    </span>
-                                                </a>
-                                            </h6>
-                                        </div>
-                                        <div class="card-body">
-                                            <p>{{ iniciativa.descripcion or 'Sin descripción' }}</p>
-
-                                            {# Barra de progreso #}
-                                            {% set estados = [
-                                                'No Iniciado','Formulación','Revisión','Corrección','Elegible',
-                                                'Financiado','Firma Convenio','Preparación Bases','Licitación',
-                                                'Adjudicación','Firma Contrato','Entregado','En Ejecución','Finalizado'
-                                            ] %}
-                                            {% set estado_actual = iniciativa.estado or 'No Iniciado' %}
-                                            {% set progreso = 0 %}
-                                            {% if estado_actual in estados %}
-                                                {% set idx = estados.index(estado_actual) %}
-                                                {% set progreso = (idx / (estados|length - 1)) * 100 %}
-                                            {% endif %}
-
-                                            <div class="mt-3 mb-3">
-                                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                                    <span class="small">Progreso del proyecto:</span>
-                                                    <span class="small text-muted">{{ progreso|round }}%</span>
-                                                </div>
-                                                <div class="progress" style="height:8px;">
-                                                    <div class="progress-bar bg-success"
-                                                         role="progressbar"
-                                                         style="width:{{ progreso }}%;"
-                                                         aria-valuenow="{{ progreso }}"
-                                                         aria-valuemin="0"
-                                                         aria-valuemax="100"
-                                                         title="{{ estado_actual }}">
+                    <div class="tab-content" id="mainTabsContent">
+                        <!-- Pestaña de Iniciativas -->
+                        <div class="tab-pane fade show active" id="initiatives" role="tabpanel" aria-labelledby="initiatives-tab">
+                            {% if iniciativas %}
+                                <div class="row">
+                                    {% for iniciativa in iniciativas %}
+                                    <div class="col-md-6 mb-4">
+                                        <div class="card initiative-card h-100">
+                                            <div class="card-header bg-primary text-white position-relative">
+                                                <h5 class="mb-0">
+                                                    {{ iniciativa.nombre }}
+                                                    {% if iniciativa.codigo %}
+                                                        <small>({{ iniciativa.codigo }})</small>
+                                                    {% endif %}
+                                                    {% if iniciativa.pending_tasks_count > 0 %}
+                                                        <span class="badge bg-danger rounded-pill ms-2 task-badge" title="Tareas pendientes">
+                                                            <i class="fas fa-tasks me-1"></i>{{ iniciativa.pending_tasks_count }}
+                                                        </span>
+                                                    {% endif %}
+                                                </h5>
+                                            </div>
+                                            <div class="card-body">
+                                                <p class="text-muted">{{ iniciativa.descripcion|truncate(100) }}</p>
+                                                
+                                                <!-- Barra de progreso -->
+                                                <div class="mt-3 mb-3">
+                                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                                        <span class="small">Progreso:</span>
+                                                        <span class="badge bg-success rounded-pill">{{ iniciativa.progreso|default(0)|round }}%</span>
+                                                    </div>
+                                                    <div class="progress">
+                                                        <div class="progress-bar bg-success" role="progressbar" 
+                                                             style="width: {{ iniciativa.progreso|default(0) }}%;" 
+                                                             aria-valuenow="{{ iniciativa.progreso|default(0) }}" 
+                                                             aria-valuemin="0" 
+                                                             aria-valuemax="100">
+                                                        </div>
+                                                    </div>
+                                                    <div class="text-end small mt-1">
+                                                        <span class="badge bg-primary">{{ iniciativa.estado }}</span>
                                                     </div>
                                                 </div>
-                                                <div class="text-end small mt-1">
-                                                    <span class="badge bg-primary">{{ estado_actual }}</span>
+                                                
+                                                <div class="text-muted small">
+                                                    <div>
+                                                        <strong>Asignado el:</strong> 
+                                                        {{ iniciativa.fecha_asignacion.strftime('%d/%m/%Y') if iniciativa.fecha_asignacion else 'No especificado' }}
+                                                    </div>
+                                                    <div>
+                                                        <strong>Asignado por:</strong> 
+                                                        {{ iniciativa.asignado_por }}
+                                                    </div>
                                                 </div>
                                             </div>
-
-                                            <div class="text-muted small">
-                                                <div>
-                                                    <strong>Asignado el:</strong>
-                                                    {{ iniciativa.fecha_asignacion.strftime('%d/%m/%Y')
-                                                       if iniciativa.fecha_asignacion else 'No especificado' }}
+                                            <div class="card-footer">
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <a href="{{ url_for('colaborador.view_initiative_detail', iniciativa_id=iniciativa.id) }}" class="btn btn-sm btn-outline-primary">
+                                                        <i class="fas fa-info-circle me-1"></i> Detalles
+                                                    </a>
+                                                    <a href="{{ url_for('colaborador.workbench', iniciativa_id=iniciativa.id) }}" class="btn btn-sm btn-primary">
+                                                        <i class="fas fa-tools me-1"></i> Área de Trabajo
+                                                    </a>
                                                 </div>
-                                                <div>
-                                                    <strong>Asignado por:</strong>
-                                                    {{ iniciativa.asignado_por or 'No especificado' }}
-                                                </div>
-                                            </div>
-
-                                            <div class="mt-3">
-                                                <a href="{{ url_for('colaborador.workbench', iniciativa_id=iniciativa.id) }}"
-                                                   class="btn btn-sm btn-primary w-100">
-                                                    <i class="fas fa-tools me-2"></i> Área de Trabajo
-                                                </a>
                                             </div>
                                         </div>
                                     </div>
+                                    {% endfor %}
                                 </div>
+                                
+                                {% if iniciativas|length > 4 %}
+                                <div class="text-center mt-3">
+                                    <a href="{{ url_for('colaborador.my_initiatives') }}" class="btn btn-outline-primary">
+                                        Ver todas las iniciativas
+                                    </a>
+                                </div>
+                                {% endif %}
+                            {% else %}
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i> No tienes iniciativas asignadas actualmente.
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Pestaña de Tareas -->
+                        <div class="tab-pane fade" id="tasks" role="tabpanel" aria-labelledby="tasks-tab">
+                            <!-- Sub-pestañas para tareas -->
+                            <ul class="nav nav-pills mb-3" id="tasksTabs" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <a class="nav-link active" id="pending-tab" data-bs-toggle="pill" href="#pending-tasks" role="tab" aria-controls="pending-tasks" aria-selected="true">
+                                        Pendientes <span class="badge bg-danger ms-1">{{ pending_tasks|length }}</span>
+                                    </a>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <a class="nav-link" id="completed-tab" data-bs-toggle="pill" href="#completed-tasks" role="tab" aria-controls="completed-tasks" aria-selected="false">
+                                        Completadas <span class="badge bg-success ms-1">{{ completed_tasks|length }}</span>
+                                    </a>
+                                </li>
+                            </ul>
+                            
+                            <div class="tab-content" id="tasksTabsContent">
+                                <!-- Tareas pendientes -->
+                                <div class="tab-pane fade show active" id="pending-tasks" role="tabpanel" aria-labelledby="pending-tab">
+                                    {% if pending_tasks %}
+                                        {% for task in pending_tasks %}
+                                        <div class="card task-card mb-2" id="task-{{ task._id }}">
+                                            <div class="card-body py-2 px-3">
+                                                <div class="d-flex justify-content-between align-items-start">
+                                                    <div>
+                                                        <p class="mb-1">{{ task.content }}</p>
+                                                        <div class="text-muted small">
+                                                            <i class="fas fa-project-diagram me-1"></i> {{ task.initiative_name }}
+                                                            <span class="ms-2"><i class="far fa-calendar-alt me-1"></i> {{ task.created_at.strftime('%d/%m/%Y') }}</span>
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <button class="btn btn-sm btn-success complete-task-btn" data-task-id="{{ task._id }}">
+                                                            <i class="fas fa-check"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                        
+                                        {% if pending_tasks|length > 5 %}
+                                        <div class="text-center mt-3">
+                                            <a href="{{ url_for('colaborador.my_tasks') }}" class="btn btn-outline-primary">
+                                                Ver todas las tareas
+                                            </a>
+                                        </div>
+                                        {% endif %}
+                                    {% else %}
+                                        <div class="alert alert-success">
+                                            <i class="fas fa-check-circle me-2"></i> ¡No tienes tareas pendientes!
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                
+                                <!-- Tareas completadas -->
+                                <div class="tab-pane fade" id="completed-tasks" role="tabpanel" aria-labelledby="completed-tab">
+                                    {% if completed_tasks %}
+                                        {% for task in completed_tasks %}
+                                        <div class="card task-card completed mb-2" id="task-{{ task._id }}">
+                                            <div class="card-body py-2 px-3">
+                                                <div class="d-flex justify-content-between align-items-start">
+                                                    <div>
+                                                        <p class="mb-1">{{ task.content }}</p>
+                                                        <div class="text-muted small">
+                                                            <i class="fas fa-project-diagram me-1"></i> {{ task.initiative_name }}
+                                                            <span class="ms-2"><i class="far fa-calendar-check me-1"></i> Completada el {{ task.completed_at.strftime('%d/%m/%Y') }}</span>
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <button class="btn btn-sm btn-warning reopen-task-btn" data-task-id="{{ task._id }}">
+                                                            <i class="fas fa-redo-alt"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                        
+                                        {% if completed_tasks|length > 5 %}
+                                        <div class="text-center mt-3">
+                                            <a href="{{ url_for('colaborador.my_tasks') }}" class="btn btn-outline-primary">
+                                                Ver historial completo
+                                            </a>
+                                        </div>
+                                        {% endif %}
+                                    {% else %}
+                                        <div class="alert alert-info">
+                                            <i class="fas fa-info-circle me-2"></i> No hay tareas completadas recientemente.
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Panel lateral -->
+        <div class="col-lg-4">
+            <!-- Perfil del usuario -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-user-circle me-2"></i>Perfil</h5>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-3">
+                        <div class="avatar-placeholder rounded-circle bg-light d-inline-flex align-items-center justify-content-center" style="width: 100px; height: 100px;">
+                            <i class="fas fa-user text-primary" style="font-size: 3rem;"></i>
+                        </div>
+                        <h5 class="mt-3">{{ user_data.nombre or user_data.email }}</h5>
+                        <p class="text-muted">{{ user_data.email }}</p>
+                    </div>
+                    
+                    <div class="border-top pt-3">
+                        <p><strong>RUT:</strong> {{ user_data.rut or 'No especificado' }}</p>
+                        <p><strong>Último acceso:</strong> 
+                            {% if user_data.last_login %}
+                                {{ user_data.last_login.strftime('%d/%m/%Y %H:%M') }}
+                            {% else %}
+                                Primera vez
+                            {% endif %}
+                        </p>
+                        {% if user_data.titulos %}
+                            <p><strong>Títulos:</strong></p>
+                            <div class="mb-3">
+                                {% for titulo in user_data.titulos %}
+                                    <span class="badge bg-info me-1 mb-1">{{ titulo }}</span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Acciones rápidas -->
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Acciones Rápidas</h5>
+                </div>
+                <div class="card-body">
+                    <a href="{{ url_for('colaborador.my_tasks') }}" class="d-block text-decoration-none text-dark">
+                        <div class="quick-action bg-light">
+                            <div class="quick-action-icon text-warning">
+                                <i class="fas fa-tasks"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-0">Administrar Tareas</h6>
+                                <small class="text-muted">Ver y gestionar tus tareas</small>
+                            </div>
+                        </div>
+                    </a>
+                    
+                    <a href="{{ url_for('colaborador.my_initiatives') }}" class="d-block text-decoration-none text-dark">
+                        <div class="quick-action bg-light">
+                            <div class="quick-action-icon text-primary">
+                                <i class="fas fa-project-diagram"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-0">Iniciativas</h6>
+                                <small class="text-muted">Ver todas tus iniciativas</small>
+                            </div>
+                        </div>
+                    </a>
+                    
+                    <a href="{{ url_for('auth.change_password') }}" class="d-block text-decoration-none text-dark">
+                        <div class="quick-action bg-light">
+                            <div class="quick-action-icon text-danger">
+                                <i class="fas fa-key"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-0">Cambiar Contraseña</h6>
+                                <small class="text-muted">Actualizar credenciales</small>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Actividad reciente -->
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-history me-2"></i>Actividad Reciente</h5>
+                </div>
+                <div class="card-body">
+                    {% if activity_log %}
+                        <div class="timeline">
+                            {% for activity in activity_log %}
+                            <div class="d-flex mb-3">
+                                <div class="timeline-icon me-3 text-center">
+                                    <div class="bg-info text-white rounded-circle p-2" style="width: 36px; height: 36px;">
+                                        <i class="{{ activity.icon }}"></i>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p class="mb-0">{{ activity.description }}</p>
+                                    <small class="text-muted">{{ activity.timestamp.strftime('%d/%m/%Y %H:%M') }}</small>
+                                </div>
+                            </div>
                             {% endfor %}
                         </div>
                     {% else %}
                         <div class="alert alert-info">
-                            <i class="fas fa-info-circle me-2"></i> No tienes iniciativas asignadas actualmente.
+                            <i class="fas fa-info-circle me-2"></i> No hay actividad reciente.
                         </div>
                     {% endif %}
                 </div>
@@ -156,49 +501,66 @@
         </div>
     </div>
 </div>
+{% endblock %}
 
-<!-- Estadísticas principales -->
-    <div class="row">
-        <div class="col-md-4 mb-4">
-            <div class="card stats-card colaborador">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <h5 class="card-title">Tareas Totales</h5>
-                        <h2 class="mb-0">{{ stats.total_tasks }}</h2>
-                    </div>
-                    <div class="stats-icon">
-                        <i class="fas fa-tasks"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4 mb-4">
-            <div class="card stats-card">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <h5 class="card-title">Completadas</h5>
-                        <h2 class="mb-0">{{ stats.completed_tasks }}</h2>
-                    </div>
-                    <div class="stats-icon">
-                        <i class="fas fa-check-circle text-success"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4 mb-4">
-            <div class="card stats-card colaborador">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <h5 class="card-title">Iniciativas Asignadas</h5>
-                        <h2 class="mb-0">{{ stats.total_iniciativas }}</h2>
-                    </div>
-                    <div class="stats-icon">
-                        <i class="fas fa-project-diagram"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-
+{% block extra_js %}
+<script>
+    // Función para marcar una tarea como completada
+    document.querySelectorAll('.complete-task-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const taskId = this.getAttribute('data-task-id');
+            completeTask(taskId);
+        });
+    });
+    
+    // Función para reabrir una tarea
+    document.querySelectorAll('.reopen-task-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const taskId = this.getAttribute('data-task-id');
+            reopenTask(taskId);
+        });
+    });
+    
+    // Función para completar tarea mediante AJAX
+    function completeTask(taskId) {
+        fetch(`/colaborador/tareas/${taskId}/completar`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Actualizar la UI o recargar la página
+                location.reload();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
+    
+    // Función para reabrir tarea mediante AJAX
+    function reopenTask(taskId) {
+        fetch(`/colaborador/tareas/${taskId}/reabrir`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Actualizar la UI o recargar la página
+                location.reload();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => console.error('Error:', error));
+    }
+</script>
 {% endblock %}

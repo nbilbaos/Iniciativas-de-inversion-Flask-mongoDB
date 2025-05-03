@@ -25,78 +25,203 @@ import os
 # Constante para la colección de metadatos de la base de datos
 METADATA_COLLECTION = 'db_metadata'
 
+
 @colaborador_bp.route('/dashboard')
 @login_required
 @role_required(['colaborador'])
 def dashboard():
-    """Dashboard para el rol de colaborador."""
-    user_data = mongo.db.users.find_one({"_id": ObjectId(current_user.get_id())})
+    """Dashboard unificado para el rol de colaborador."""
+    try:
+        # Obtener datos del usuario actual
+        user_data = mongo.db.users.find_one({"_id": ObjectId(current_user.get_id())})
+        if not user_data:
+            flash('Usuario no encontrado', 'danger')
+            return redirect(url_for('auth.login'))
 
-    if not user_data:
-        flash('Usuario no encontrado', 'danger')
+        # Obtener iniciativas asignadas activas
+        assigned_initiatives = user_data.get('iniciativas', [])
+        active_initiatives = [i for i in assigned_initiatives if i.get('active', True)]
+
+        # Obtener detalles de las iniciativas activas
+        initiative_details = []
+        initiative_ids = []
+
+        if active_initiatives:
+            initiative_ids = [ObjectId(i.get('initiative_id')) for i in active_initiatives]
+
+            collection_name = current_app.config['INITIATIVES_COLLECTION']
+            parts = collection_name.split('.')
+            if len(parts) > 1:
+                initiatives_coll = mongo.db[parts[0]][parts[1]]
+            else:
+                initiatives_coll = mongo.db[collection_name]
+
+            initiatives = list(initiatives_coll.find({
+                "_id": {"$in": initiative_ids}
+            }))
+
+            # Mapear la información de asignación a cada iniciativa
+            for initiative in initiatives:
+                # Buscar la información de asignación correspondiente
+                assignment_info = next(
+                    (ai for ai in active_initiatives if ai.get('initiative_id') == str(initiative['_id'])),
+                    None
+                )
+
+                if assignment_info:
+                    # Obtener el nombre del usuario que asignó
+                    assigner = None
+                    if assignment_info.get('assigned_by'):
+                        assigner = mongo.db.users.find_one(
+                            {"_id": ObjectId(assignment_info.get('assigned_by'))},
+                            {"nombre": 1, "email": 1}
+                        )
+
+                    # Calcular progreso basado en el estado
+                    estados = [
+                        'No Iniciado', 'Formulación', 'Revisión', 'Corrección', 'Elegible',
+                        'Financiado', 'Firma Convenio', 'Preparación Bases', 'Licitación',
+                        'Adjudicación', 'Firma Contrato', 'Entregado', 'En Ejecución', 'Finalizado'
+                    ]
+
+                    estado_actual = initiative.get('estado', 'No Iniciado')
+                    progreso = 0
+
+                    if estado_actual in estados:
+                        indice_estado = estados.index(estado_actual)
+                        progreso = (indice_estado / (len(estados) - 1)) * 100
+
+                    # Añadir el ID de la iniciativa para poder usar en los enlaces
+                    initiative_details.append({
+                        'id': str(initiative['_id']),
+                        'nombre': initiative.get('nombre_iniciativa', initiative.get('nombre', 'Sin nombre')),
+                        'codigo': initiative.get('cod', initiative.get('codigo')),
+                        'descripcion': initiative.get('descripcion', ''),
+                        'fecha_asignacion': assignment_info.get('assigned_at'),
+                        'estado': estado_actual,
+                        'progreso': progreso,
+                        'asignado_por': assigner.get('nombre', assigner.get('email',
+                                                                            'No especificado')) if assigner else 'No especificado'
+                    })
+
+        # Ordenar las iniciativas por fecha de asignación (más recientes primero)
+        initiative_details.sort(key=lambda x: x.get('fecha_asignacion', datetime(1900, 1, 1)), reverse=True)
+
+        # Obtener tareas del usuario
+        tasks = list(mongo.db.tasks.find({
+            "$or": [
+                {"assigned_to": current_user.get_id()},
+                {"created_by": current_user.get_id()}
+            ]
+        }).sort("created_at", -1))
+
+        # Contar tareas pendientes por iniciativa
+        pending_tasks_by_initiative = {}
+        for task in tasks:
+            if not task.get('is_completed', False):
+                initiative_id = task.get('initiative_id')
+                if initiative_id not in pending_tasks_by_initiative:
+                    pending_tasks_by_initiative[initiative_id] = 0
+                pending_tasks_by_initiative[initiative_id] += 1
+
+        # Añadir contador de tareas pendientes a cada iniciativa
+        for initiative in initiative_details:
+            initiative['pending_tasks_count'] = pending_tasks_by_initiative.get(initiative['id'], 0)
+
+        # Separar tareas pendientes y completadas
+        pending_tasks = []
+        completed_tasks = []
+
+        # Obtener nombres de iniciativas para las tareas
+        task_initiative_ids = {task['initiative_id'] for task in tasks}
+        task_initiatives = {}
+
+        if task_initiative_ids:
+            collection_name = current_app.config['INITIATIVES_COLLECTION']
+            parts = collection_name.split('.')
+            if len(parts) > 1:
+                initiatives_coll = mongo.db[parts[0]][parts[1]]
+            else:
+                initiatives_coll = mongo.db[collection_name]
+
+            for init in initiatives_coll.find({"_id": {"$in": [ObjectId(id) for id in task_initiative_ids]}}):
+                task_initiatives[str(init['_id'])] = init.get('nombre_iniciativa', init.get('nombre', 'Sin nombre'))
+
+        # Procesar tareas
+        for task in tasks:
+            # Añadir nombre de la iniciativa a la tarea
+            task['initiative_name'] = task_initiatives.get(task['initiative_id'], 'Iniciativa desconocida')
+
+            if task.get('is_completed', False):
+                completed_tasks.append(task)
+            else:
+                pending_tasks.append(task)
+
+        # Limitar a las 5 tareas más recientes para el dashboard
+        pending_tasks = pending_tasks[:5]
+        completed_tasks = completed_tasks[:5]
+
+        # Estadísticas
+        stats = {
+            'total_tasks': len(tasks),
+            'completed_tasks': len([t for t in tasks if t.get('is_completed', False)]),
+            'pending_tasks': len([t for t in tasks if not t.get('is_completed', False)]),
+            'total_iniciativas': len(initiative_details)
+        }
+
+        # Obtener actividad reciente (del historial de modificaciones y tareas)
+        activity_log = []
+
+        # Añadir historial de cambios de estado de iniciativas
+        estado_logs = list(mongo.db.estado_iniciativa_historial.find({
+            "initiative_id": {"$in": [str(id) for id in initiative_ids]}
+        }).sort("timestamp", -1).limit(5))
+
+        for log in estado_logs:
+            activity_log.append({
+                'timestamp': log.get('timestamp'),
+                'description': f"Cambio de estado en {task_initiatives.get(log.get('initiative_id'), 'Iniciativa')} a {log.get('new_state')}",
+                'icon': 'fas fa-exchange-alt'
+            })
+
+        # Añadir tareas completadas como actividad
+        for task in completed_tasks[:3]:  # Limitamos a las 3 más recientes
+            # Obtener nombre del usuario que completó
+            completer = None
+            if task.get('completed_by'):
+                completer = mongo.db.users.find_one(
+                    {"_id": ObjectId(task.get('completed_by'))},
+                    {"nombre": 1, "email": 1}
+                )
+
+            activity_log.append({
+                'timestamp': task.get('completed_at'),
+                'description': f"Tarea completada en {task.get('initiative_name')}: {task.get('content')[:50]}...",
+                'icon': 'fas fa-check-circle'
+            })
+
+        # Ordenar actividad por fecha (más reciente primero)
+        activity_log.sort(key=lambda x: x['timestamp'], reverse=True)
+        activity_log = activity_log[:5]  # Limitar a 5 actividades
+
+        # Obtener fecha actual para el dashboard
+        now = datetime.now()
+
+        return render_template(
+            'colaborador/dashboard.html',
+            user_data=user_data,
+            stats=stats,
+            iniciativas=initiative_details,
+            pending_tasks=pending_tasks,
+            completed_tasks=completed_tasks,
+            activity_log=activity_log,
+            now=now
+        )
+    except Exception as e:
+        import traceback
+        print(f"Error en dashboard: {traceback.format_exc()}")
+        flash(f'Error al cargar el dashboard: {str(e)}', 'danger')
         return redirect(url_for('auth.login'))
-
-    # Obtener iniciativas asignadas activas
-    assigned_initiatives = user_data.get('iniciativas', [])
-    active_initiatives = [i for i in assigned_initiatives if i.get('active', True)]
-
-    stats = {
-        'total_tasks': 0,  # Puedes implementar la lógica de tareas más adelante
-        'completed_tasks': 0,
-        'pending_tasks': 0,
-        'total_iniciativas': len(active_initiatives)
-    }
-
-    # Obtener detalles de las iniciativas activas
-    initiative_details = []
-    if active_initiatives:
-        initiative_ids = [ObjectId(i.get('initiative_id')) for i in active_initiatives]
-
-        collection_name = current_app.config['INITIATIVES_COLLECTION']
-        parts = collection_name.split('.')
-        if len(parts) > 1:
-            initiatives_coll = mongo.db[parts[0]][parts[1]]
-        else:
-            initiatives_coll = mongo.db[collection_name]
-
-        initiatives = list(initiatives_coll.find({
-            "_id": {"$in": initiative_ids}
-        }))
-
-        # Mapear la información de asignación a cada iniciativa
-        for initiative in initiatives:
-            # Buscar la información de asignación correspondiente
-            assignment_info = next(
-                (ai for ai in active_initiatives if ai.get('initiative_id') == str(initiative['_id'])),
-                None
-            )
-
-            if assignment_info:
-                # Obtener el nombre del usuario que asignó
-                assigner = None
-                if assignment_info.get('assigned_by'):
-                    assigner = mongo.db.users.find_one(
-                        {"_id": ObjectId(assignment_info.get('assigned_by'))},
-                        {"nombre": 1, "email": 1}
-                    )
-
-                # Añadir el ID de la iniciativa para poder usar en los enlaces al workbench
-                initiative_details.append({
-                    'id': str(initiative['_id']),
-                    'nombre': initiative.get('nombre_iniciativa', initiative.get('nombre', 'Sin nombre')),
-                    'descripcion': initiative.get('descripcion', ''),
-                    'fecha_asignacion': assignment_info.get('assigned_at'),
-                    'asignado_por': assigner.get('nombre', assigner.get('email',
-                                                                      'No especificado')) if assigner else 'No especificado',
-                    'estado': initiative.get('estado', 'No Iniciado')
-                })
-
-    return render_template(
-        'colaborador/dashboard.html',
-        stats=stats,
-        user_data=user_data,
-        iniciativas=initiative_details
-    )
 
 @colaborador_bp.route('/profile')
 @login_required
@@ -484,7 +609,6 @@ def workbench(iniciativa_id):
         flash(f'Error al cargar el área de trabajo: {str(e)}', 'danger')
         return redirect(url_for('colaborador.my_initiatives'))
 
-
 # Ruta para ver todas las tareas asignadas al colaborador
 @colaborador_bp.route('/mis-tareas')
 @login_required
@@ -516,6 +640,16 @@ def my_tasks():
             })
         }
 
+        # Procesar tareas para añadir información adicional
+        for task in assigned_tasks:
+            # Añadir nombre de la iniciativa
+            initiative = initiatives.get(task['initiative_id'])
+            if initiative:
+                task['initiative_name'] = initiative.get('nombre_iniciativa',
+                                                      initiative.get('nombre', 'Sin nombre'))
+            else:
+                task['initiative_name'] = 'Iniciativa desconocida'
+
         # Obtener información de los usuarios para mostrar nombres
         user_ids = set()
         for task in assigned_tasks:
@@ -528,6 +662,10 @@ def my_tasks():
         users = {str(u['_id']): u for u in
                  mongo.db.users.find({"_id": {"$in": [ObjectId(uid) for uid in user_ids if uid]}})}
 
+        # Separar tareas en pendientes y completadas
+        pending_tasks = [t for t in assigned_tasks if not t.get('is_completed', False)]
+        completed_tasks = [t for t in assigned_tasks if t.get('is_completed', False)]
+
         # Agrupar tareas por iniciativa
         tasks_by_initiative = {}
         for task in assigned_tasks:
@@ -536,12 +674,22 @@ def my_tasks():
                 tasks_by_initiative[initiative_id] = []
             tasks_by_initiative[initiative_id].append(task)
 
+        # Estadísticas para la página
+        stats = {
+            'total_tasks': len(assigned_tasks),
+            'completed_tasks': len(completed_tasks),
+            'pending_tasks': len(pending_tasks)
+        }
+
         return render_template(
-            'colaborador/tasks.html',
+            'colaborador/initiative_tasks.html',
             tasks=assigned_tasks,
+            pending_tasks=pending_tasks,
+            completed_tasks=completed_tasks,
             tasks_by_initiative=tasks_by_initiative,
             initiatives=initiatives,
-            users=users
+            users=users,
+            stats=stats
         )
     except Exception as e:
         import traceback
