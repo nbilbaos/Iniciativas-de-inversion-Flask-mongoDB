@@ -4,14 +4,11 @@ from flask_login import login_required, current_user
 from datetime import datetime
 from bson.objectid import ObjectId
 from werkzeug.utils import secure_filename
-
 from . import colaborador_bp
 from ..auth.utils import role_required
 from .. import mongo
-
 from flask import jsonify
 from ..models.task import Task
-
 from io import BytesIO
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
@@ -541,7 +538,7 @@ def view_initiative_detail(iniciativa_id):
 @login_required
 @role_required(['colaborador'])
 def edit_initiative(iniciativa_id):
-    """Permitir al colaborador editar campos específicos de una iniciativa."""
+    """Permitir al colaborador editar todos los campos de una iniciativa."""
     try:
         # Verificar que el usuario tiene acceso a esta iniciativa
         user = mongo.db.users.find_one({"_id": ObjectId(current_user.get_id())})
@@ -562,6 +559,7 @@ def edit_initiative(iniciativa_id):
             flash('No tienes acceso a esta iniciativa', 'danger')
             return redirect(url_for('colaborador.my_initiatives'))
 
+        # Obtener la colección correcta
         collection_name = current_app.config['INITIATIVES_COLLECTION']
         parts = collection_name.split('.')
         if len(parts) > 1:
@@ -569,29 +567,44 @@ def edit_initiative(iniciativa_id):
         else:
             initiatives_coll = mongo.db[collection_name]
 
+        # Obtener la iniciativa
         initiative = initiatives_coll.find_one({"_id": ObjectId(iniciativa_id)})
 
         if not initiative:
             flash('Iniciativa no encontrada', 'danger')
             return redirect(url_for('colaborador.my_initiatives'))
 
-        # Definir campos editables por colaboradores
-        editable_fields = ['estado', 'avance', 'comentarios', 'ultima_actualizacion']
-
         if request.method == 'POST':
-            # Obtener solo los campos permitidos para edición
+            # Recopilar todos los campos del formulario
             update_data = {}
             modified_fields = []
 
-            for field in editable_fields:
+            # Lista completa de campos a verificar
+            form_fields = [
+                'nombre_iniciativa', 'cod', 'descripcion', 'tipo', 'categoria',
+                'estado', 'avance', 'comentarios', 'comuna', 'region', 'direccion',
+                'contacto_nombre', 'contacto_telefono', 'contacto_email',
+                'fuente_financiamiento', 'monto', 'etapa_financiera'
+            ]
+
+            for field in form_fields:
                 if field in request.form:
                     new_value = request.form.get(field)
-                    # Convertir a número si es el campo de avance
+
+                    # Formatear valores especiales
                     if field == 'avance':
                         try:
                             new_value = int(new_value)
                         except (ValueError, TypeError):
                             new_value = 0
+                    elif field == 'monto':
+                        # Eliminar separadores de miles antes de guardar
+                        new_value = new_value.replace('.', '')
+                        if new_value:
+                            try:
+                                new_value = int(new_value)
+                            except ValueError:
+                                new_value = 0
 
                     # Solo actualizar si el valor ha cambiado
                     if field in initiative:
@@ -631,37 +644,23 @@ def edit_initiative(iniciativa_id):
             else:
                 flash('No hay cambios para guardar', 'info')
 
-            return redirect(url_for('colaborador.view_initiative_detail', iniciativa_id=iniciativa_id))
-
-        # Para GET, preparar los campos editables para mostrar en el formulario
-        fields_to_show = {}
-        for field in editable_fields:
-            if field in initiative:
-                fields_to_show[field] = initiative[field]
+            # Verificar si debemos redirigir al workbench
+            if 'redirect_to_workbench' in request.form:
+                return redirect(url_for('colaborador.workbench', iniciativa_id=iniciativa_id))
             else:
-                # Valores por defecto para campos que no existen
-                if field == 'estado':
-                    fields_to_show[field] = 'activo'
-                elif field == 'avance':
-                    fields_to_show[field] = 0
-                else:
-                    fields_to_show[field] = ''
+                return redirect(url_for('colaborador.view_initiative_detail', iniciativa_id=iniciativa_id))
 
+        # Para GET, renderizar el formulario con todos los campos de la iniciativa
         return render_template(
             'colaborador/edit_initiative.html',
             initiative=initiative,
-            editable_fields=fields_to_show,
             iniciativa_id=iniciativa_id
         )
     except Exception as e:
-        #print(f"Error en edit_initiative: {str(e)}")  # Para debugging
         import traceback
         traceback.print_exc()  # Para debugging
         flash(f'Error al editar la iniciativa: {e}', 'danger')
         return redirect(url_for('colaborador.my_initiatives'))
-
-
-# Añadir esta nueva ruta a app/colaborador/routes.py
 
 # Añadir a app/colaborador/routes.py
 

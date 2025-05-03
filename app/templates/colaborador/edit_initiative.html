@@ -2,106 +2,285 @@
 
 {% block title %}Editar Iniciativa{% endblock %}
 
+{% block extra_css %}
+<style>
+    .form-section {
+        background-color: #f8f9fa;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    }
+    
+    .field-row {
+        margin-bottom: 15px;
+    }
+    
+    .section-header {
+        border-bottom: 1px solid #e9ecef;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+        font-weight: 600;
+        color: #495057;
+    }
+    
+    .form-control:focus {
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        border-color: #80bdff;
+    }
+    
+    .btn-submit {
+        padding: 10px 25px;
+        font-weight: 600;
+    }
+    
+    .required-field::after {
+        content: "*";
+        color: red;
+        margin-left: 4px;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>Editar Iniciativa</h1>
-        <a href="{{ url_for('colaborador.workbench', iniciativa_id=iniciativa_id) }}" class="btn btn-secondary">
-                <i class="fas fa-arrow-left me-2"></i>Volver a la Iniciativa
-        </a>
+        <div class="d-flex">
+            <a href="{{ url_for('colaborador.workbench', iniciativa_id=iniciativa_id) }}" class="btn btn-primary">
+                <i class="fas fa-tools me-1"></i>Área de Trabajo
+            </a>
+        </div>
     </div>
 
-    <div class="row">
-        <div class="col-md-8 offset-md-2">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">
-                        {{ initiative.nombre_iniciativa if 'nombre_iniciativa' in initiative else 'Iniciativa sin nombre' }}
-                        {% if 'cod' in initiative %}
-                        <small>({{ initiative.cod }})</small>
-                        {% endif %}
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle me-2"></i>
-                        Como colaborador, solo puedes editar ciertos campos de la iniciativa.
+    <form method="POST" action="{{ url_for('colaborador.edit_initiative', iniciativa_id=iniciativa_id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        
+        <div class="row">
+            <!-- Información básica -->
+            <div class="col-lg-6">
+                <div class="form-section">
+                    <h5 class="section-header">Información Básica</h5>
+                    
+                    <div class="row field-row">
+                        <div class="col-md-6">
+                            <label for="nombre_iniciativa" class="form-label required-field">Nombre de la Iniciativa</label>
+                            <input type="text" class="form-control" id="nombre_iniciativa" name="nombre_iniciativa" 
+                                   value="{{ initiative.nombre_iniciativa if 'nombre_iniciativa' in initiative else initiative.nombre }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="cod" class="form-label">Código</label>
+                            <input type="text" class="form-control" id="cod" name="cod" 
+                                   value="{{ initiative.cod if 'cod' in initiative else initiative.codigo }}">
+                        </div>
                     </div>
-
-                    <form method="POST" action="{{ url_for('colaborador.edit_initiative', iniciativa_id=iniciativa_id) }}">
-                        <!-- Solución alternativa para CSRF token -->
-                        {% if config['WTF_CSRF_ENABLED'] %}
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is callable else g.csrf_token }}" />
-                        {% endif %}
-
-                        {% for field, value in editable_fields.items() %}
-                        <div class="mb-3">
-                            <label for="{{ field }}" class="form-label">
-                                {{ field.replace('_', ' ').capitalize() }}
-                            </label>
-
-                            {% if field == 'estado' %}
-                            <select class="form-select" id="{{ field }}" name="{{ field }}">
-                                <option value="activo" {% if value == 'activo' %}selected{% endif %}>Activo</option>
-                                <option value="inactivo" {% if value == 'inactivo' %}selected{% endif %}>Inactivo</option>
-                                <option value="en_progreso" {% if value == 'en_progreso' %}selected{% endif %}>En Progreso</option>
-                                <option value="completado" {% if value == 'completado' %}selected{% endif %}>Completado</option>
+                    
+                    <div class="field-row">
+                        <label for="descripcion" class="form-label">Descripción</label>
+                        <textarea class="form-control" id="descripcion" name="descripcion" rows="4">{{ initiative.descripcion or '' }}</textarea>
+                    </div>
+                    
+                    <div class="row field-row">
+                        <div class="col-md-6">
+                            <label for="tipo" class="form-label">Tipo</label>
+                            <select class="form-select" id="tipo" name="tipo">
+                                <option value="">Seleccione un tipo</option>
+                                <option value="Diseño" {% if initiative.tipo == 'Diseño' %}selected{% endif %}>Diseño</option>
+                                <option value="Ejecución" {% if initiative.tipo == 'Ejecución' %}selected{% endif %}>Ejecución</option>
+                                <option value="Mixto" {% if initiative.tipo == 'Mixto' %}selected{% endif %}>Mixto</option>
+                                <option value="Consultoría" {% if initiative.tipo == 'Consultoría' %}selected{% endif %}>Consultoría</option>
+                                <option value="Estudio" {% if initiative.tipo == 'Estudio' %}selected{% endif %}>Estudio</option>
                             </select>
-
-                            {% elif field == 'avance' %}
-                            <input type="number" class="form-control" id="{{ field }}" name="{{ field }}"
-                                   value="{{ value or 0 }}" min="0" max="100" step="1">
-                            <div class="form-text">Indica el porcentaje de avance (0-100)</div>
-
-                            {% elif field == 'comentarios' %}
-                            <textarea class="form-control" id="{{ field }}" name="{{ field }}" rows="4">{{ value or '' }}</textarea>
-
-                            {% else %}
-                            <input type="text" class="form-control" id="{{ field }}" name="{{ field }}" value="{{ value or '' }}">
-                            {% endif %}
                         </div>
-                        {% endfor %}
-
-                        <div class="d-flex justify-content-end">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save me-2"></i> Guardar Cambios
-                            </button>
+                        <div class="col-md-6">
+                            <label for="categoria" class="form-label">Categoría</label>
+                            <select class="form-select" id="categoria" name="categoria">
+                                <option value="">Seleccione una categoría</option>
+                                <option value="Educación" {% if initiative.categoria == 'Educación' %}selected{% endif %}>Educación</option>
+                                <option value="Salud" {% if initiative.categoria == 'Salud' %}selected{% endif %}>Salud</option>
+                                <option value="Deporte" {% if initiative.categoria == 'Deporte' %}selected{% endif %}>Deporte</option>
+                                <option value="Cultura" {% if initiative.categoria == 'Cultura' %}selected{% endif %}>Cultura</option>
+                                <option value="Infraestructura" {% if initiative.categoria == 'Infraestructura' %}selected{% endif %}>Infraestructura</option>
+                                <option value="Vialidad" {% if initiative.categoria == 'Vialidad' %}selected{% endif %}>Vialidad</option>
+                                <option value="Otro" {% if initiative.categoria == 'Otro' %}selected{% endif %}>Otro</option>
+                            </select>
                         </div>
-                    </form>
+                    </div>
+                </div>
+                
+                <!-- Estado y progreso -->
+                <div class="form-section">
+                    <h5 class="section-header">Estado y Progreso</h5>
+                    
+                    <div class="row field-row">
+                        <div class="col-md-6">
+                            <label for="estado" class="form-label">Estado</label>
+                            <select class="form-select" id="estado" name="estado">
+                                <option value="No Iniciado" {% if initiative.estado == 'No Iniciado' %}selected{% endif %}>No Iniciado</option>
+                                <option value="Formulación" {% if initiative.estado == 'Formulación' %}selected{% endif %}>Formulación</option>
+                                <option value="Revisión" {% if initiative.estado == 'Revisión' %}selected{% endif %}>Revisión</option>
+                                <option value="Corrección" {% if initiative.estado == 'Corrección' %}selected{% endif %}>Corrección</option>
+                                <option value="Elegible" {% if initiative.estado == 'Elegible' %}selected{% endif %}>Elegible</option>
+                                <option value="Financiado" {% if initiative.estado == 'Financiado' %}selected{% endif %}>Financiado</option>
+                                <option value="Firma Convenio" {% if initiative.estado == 'Firma Convenio' %}selected{% endif %}>Firma Convenio</option>
+                                <option value="Preparación Bases" {% if initiative.estado == 'Preparación Bases' %}selected{% endif %}>Preparación Bases</option>
+                                <option value="Licitación" {% if initiative.estado == 'Licitación' %}selected{% endif %}>Licitación</option>
+                                <option value="Adjudicación" {% if initiative.estado == 'Adjudicación' %}selected{% endif %}>Adjudicación</option>
+                                <option value="Firma Contrato" {% if initiative.estado == 'Firma Contrato' %}selected{% endif %}>Firma Contrato</option>
+                                <option value="Entregado" {% if initiative.estado == 'Entregado' %}selected{% endif %}>Entregado</option>
+                                <option value="En Ejecución" {% if initiative.estado == 'En Ejecución' %}selected{% endif %}>En Ejecución</option>
+                                <option value="Finalizado" {% if initiative.estado == 'Finalizado' %}selected{% endif %}>Finalizado</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="avance" class="form-label">Porcentaje de Avance</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="avance" name="avance" 
+                                       value="{{ initiative.avance or 0 }}" min="0" max="100" step="1">
+                                <span class="input-group-text">%</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="field-row">
+                        <label for="comentarios" class="form-label">Comentarios o Notas</label>
+                        <textarea class="form-control" id="comentarios" name="comentarios" rows="3">{{ initiative.comentarios or '' }}</textarea>
+                    </div>
                 </div>
             </div>
-
-            <!-- Vista previa de campos no editables -->
-            <div class="card mt-4">
-                <div class="card-header bg-secondary text-white">
-                    <h5 class="mb-0">Campos No Editables</h5>
+            
+            <!-- Información adicional -->
+            <div class="col-lg-6">
+                <div class="form-section">
+                    <h5 class="section-header">Ubicación y Contacto</h5>
+                    
+                    <div class="row field-row">
+                        <div class="col-md-6">
+                            <label for="comuna" class="form-label">Comuna</label>
+                            <input type="text" class="form-control" id="comuna" name="comuna" value="{{ initiative.comuna or '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="region" class="form-label">Región</label>
+                            <input type="text" class="form-control" id="region" name="region" value="{{ initiative.region or '' }}">
+                        </div>
+                    </div>
+                    
+                    <div class="field-row">
+                        <label for="direccion" class="form-label">Dirección</label>
+                        <input type="text" class="form-control" id="direccion" name="direccion" value="{{ initiative.direccion or '' }}">
+                    </div>
+                    
+                    <div class="row field-row">
+                        <div class="col-md-6">
+                            <label for="contacto_nombre" class="form-label">Nombre de Contacto</label>
+                            <input type="text" class="form-control" id="contacto_nombre" name="contacto_nombre" 
+                                   value="{{ initiative.contacto_nombre or '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="contacto_telefono" class="form-label">Teléfono de Contacto</label>
+                            <input type="text" class="form-control" id="contacto_telefono" name="contacto_telefono" 
+                                   value="{{ initiative.contacto_telefono or '' }}">
+                        </div>
+                    </div>
+                    
+                    <div class="field-row">
+                        <label for="contacto_email" class="form-label">Email de Contacto</label>
+                        <input type="email" class="form-control" id="contacto_email" name="contacto_email" 
+                               value="{{ initiative.contacto_email or '' }}">
+                    </div>
                 </div>
-                <div class="card-body">
-                    <div class="row">
-                        {% for key, value in initiative.items() %}
-                            {% if key != '_id' and key not in editable_fields and key != 'assigned_users' %}
-                                <div class="col-md-6 mb-3">
-                                    <strong>{{ key.replace('_', ' ').capitalize() }}:</strong>
-                                    {% if value is string or value is number %}
-                                        {{ value }}
-                                    {% elif value is mapping %}
-                                        <pre class="small">{{ value|tojson(indent=2) }}</pre>
-                                    {% elif value is iterable and value is not string %}
-                                        <ul class="mb-0">
-                                            {% for item in value %}
-                                                <li>{{ item }}</li>
-                                            {% endfor %}
-                                        </ul>
-                                    {% else %}
-                                        {{ value }}
-                                    {% endif %}
-                                </div>
-                            {% endif %}
-                        {% endfor %}
+                
+                <!-- Financiamiento -->
+                <div class="form-section">
+                    <h5 class="section-header">Financiamiento</h5>
+                    
+                    <div class="row field-row">
+                        <div class="col-md-6">
+                            <label for="fuente_financiamiento" class="form-label">Fuente de Financiamiento</label>
+                            <select class="form-select" id="fuente_financiamiento" name="fuente_financiamiento">
+                                <option value="">Seleccione una fuente</option>
+                                <option value="FNDR" {% if initiative.fuente_financiamiento == 'FNDR' %}selected{% endif %}>FNDR</option>
+                                <option value="SUBDERE" {% if initiative.fuente_financiamiento == 'SUBDERE' %}selected{% endif %}>SUBDERE</option>
+                                <option value="GORE" {% if initiative.fuente_financiamiento == 'GORE' %}selected{% endif %}>GORE</option>
+                                <option value="Municipal" {% if initiative.fuente_financiamiento == 'Municipal' %}selected{% endif %}>Municipal</option>
+                                <option value="Sectorial" {% if initiative.fuente_financiamiento == 'Sectorial' %}selected{% endif %}>Sectorial</option>
+                                <option value="Mixto" {% if initiative.fuente_financiamiento == 'Mixto' %}selected{% endif %}>Mixto</option>
+                                <option value="Otro" {% if initiative.fuente_financiamiento == 'Otro' %}selected{% endif %}>Otro</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="monto" class="form-label">Monto (CLP)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="text" class="form-control" id="monto" name="monto" 
+                                       value="{{ initiative.monto or '' }}" placeholder="0">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="field-row">
+                        <label for="etapa_financiera" class="form-label">Etapa Financiera</label>
+                        <select class="form-select" id="etapa_financiera" name="etapa_financiera">
+                            <option value="">Seleccione una etapa</option>
+                            <option value="Postulación" {% if initiative.etapa_financiera == 'Postulación' %}selected{% endif %}>Postulación</option>
+                            <option value="Aprobado" {% if initiative.etapa_financiera == 'Aprobado' %}selected{% endif %}>Aprobado</option>
+                            <option value="En ejecución" {% if initiative.etapa_financiera == 'En ejecución' %}selected{% endif %}>En ejecución</option>
+                            <option value="Rendición" {% if initiative.etapa_financiera == 'Rendición' %}selected{% endif %}>Rendición</option>
+                            <option value="Finalizado" {% if initiative.etapa_financiera == 'Finalizado' %}selected{% endif %}>Finalizado</option>
+                        </select>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
+        
+        <!-- Botones de acción -->
+        <div class="d-flex justify-content-between mt-4">
+            <a href="{{ url_for('colaborador.workbench', iniciativa_id=iniciativa_id) }}" class="btn btn-outline-secondary">
+                <i class="fas fa-times me-2"></i>Cancelar
+            </a>
+            <button type="submit" class="btn btn-primary btn-submit">
+                <i class="fas fa-save me-2"></i>Guardar Cambios
+            </button>
+            
+            <!-- Campo oculto para redirigir al workbench después de guardar -->
+            <input type="hidden" name="redirect_to_workbench" value="true">
+        </div>
+    </form>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Formatear entrada de monto con separadores de miles
+    document.getElementById('monto').addEventListener('input', function(e) {
+        // Eliminar caracteres no numéricos
+        let value = this.value.replace(/\D/g, '');
+        
+        // Formatear con separadores de miles
+        if (value) {
+            value = parseInt(value, 10).toLocaleString('es-CL');
+        }
+        
+        this.value = value;
+    });
+    
+    // Actualizar barra de progreso basado en estado seleccionado
+    document.getElementById('estado').addEventListener('change', function() {
+        // Lista de estados en orden de progreso
+        const estados = [
+            'No Iniciado', 'Formulación', 'Revisión', 'Corrección', 'Elegible',
+            'Financiado', 'Firma Convenio', 'Preparación Bases', 'Licitación',
+            'Adjudicación', 'Firma Contrato', 'Entregado', 'En Ejecución', 'Finalizado'
+        ];
+        
+        const estadoSeleccionado = this.value;
+        const indiceEstado = estados.indexOf(estadoSeleccionado);
+        
+        if (indiceEstado >= 0) {
+            // Calcular porcentaje basado en la posición del estado
+            const porcentaje = Math.round((indiceEstado / (estados.length - 1)) * 100);
+            document.getElementById('avance').value = porcentaje;
+        }
+    });
+</script>
 {% endblock %}
