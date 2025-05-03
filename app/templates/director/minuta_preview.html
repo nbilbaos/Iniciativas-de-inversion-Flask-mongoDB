@@ -115,13 +115,12 @@
             </ul>
         </div>
         {% endif %}
-
         <!-- Imágenes -->
         <div class="minuta-images">
             <div class="row">
                 {% for image in images %}
                 <div class="col-md-6 text-center mb-3">
-                    <img src="{{ url_for('colaborador.download_file', iniciativa_id=iniciativa_id, file_id=image._id) }}"
+                    <img src="{{ url_for('director.download_file', iniciativa_id=iniciativa_id, file_id=image._id) }}"
                          style="max-height: 300px;">
                 </div>
                 {% endfor %}

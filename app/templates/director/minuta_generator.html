@@ -43,6 +43,24 @@
         font-weight: bold;
         margin-bottom: 1rem;
     }
+
+    .checkmark-list {
+        list-style-type: none;
+        padding-left: 0;
+    }
+
+    .checkmark-list li {
+        padding-left: 30px;
+        position: relative;
+        margin-bottom: 10px;
+    }
+
+    .checkmark-list li:before {
+        content: "✅";
+        position: absolute;
+        left: 0;
+        top: 0;
+    }
 </style>
 {% endblock %}
 
@@ -122,7 +140,7 @@
                                 {% for file in files %}
                                 <div class="col-md-4 col-sm-6 mb-3 text-center">
                                     <div class="image-selection">
-                                        <img src="{{ url_for('colaborador.download_file', iniciativa_id=iniciativa_id, file_id=file._id) }}"
+                                        <img src="{{ url_for('director.download_file', iniciativa_id=iniciativa_id, file_id=file._id) }}"
                                              class="image-thumbnail {{ 'selected' if file._id|string in selected_images else '' }}"
                                              data-file-id="{{ file._id }}"
                                              onclick="toggleImageSelection(this)">
@@ -146,124 +164,121 @@
                             </div>
                             {% endif %}
                         </div>
-                    </div>
-                </div>
+                        <!-- Personalizar sección "El proyecto contempla" -->
+                        <div class="col-md-12 mt-4">
+                            <div class="field-selector">
+                                <h5>Personalizar sección "El proyecto contempla"</h5>
+                                <p class="text-muted">Configure la sección de características del proyecto.</p>
 
-                <!-- Modificaciones en app/templates/director/minuta_generator.html -->
-
-                <!-- Añadir esta sección después del selector de imágenes -->
-                <div class="col-md-12 mt-4">
-                    <div class="field-selector">
-                        <h5>Personalizar sección "El proyecto contempla"</h5>
-                        <p class="text-muted">Configure la sección de características del proyecto.</p>
-
-                        <div class="mb-3">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="show_project_section"
-                                       name="show_project_section"
-                                       {% if minuta_config.get('show_project_section', True) %}checked{% endif %}>
-                                <label class="form-check-label" for="show_project_section">
-                                    Mostrar sección "El proyecto contempla"
-                                </label>
-                            </div>
-                        </div>
-
-                        <div id="project_section_config" {% if not minuta_config.get(
-                        'show_project_section', True) %}style="display:none;"{% endif %}>
-                        <div class="mb-3">
-                            <label for="project_section_title" class="form-label">Título de la sección</label>
-                            <input type="text" class="form-control" id="project_section_title"
-                                   name="project_section_title"
-                                   value="{{ minuta_config.get('project_section_title', 'El proyecto contempla:') }}">
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="project_features" class="form-label">Características del proyecto</label>
-                            <div class="mb-2">
-                                <small class="text-muted">Ingrese una característica por línea. Cada línea se mostrará
-                                    con un marcador de verificación (✅).</small>
-                            </div>
-                            <textarea class="form-control" id="project_features" name="project_features" rows="6">{{ minuta_config.get('project_features', iniciativa.get('descripcion', ''))|replace('✅ ', '') }}</textarea>
-                        </div>
-                    </div>
-                </div>
-
-
-                <!-- Vista previa de la minuta -->
-                <div class="preview-box mt-4">
-                    <h5>Vista Previa de Campos Seleccionados</h5>
-                    <div id="previewContent" class="mt-3">
-                        <p class="minuta-title" id="preview_title">{{ minuta_config.get('title', 'MINUTA PROYECTO: ' +
-                            (iniciativa.get('nombre_iniciativa', iniciativa.get('nombre', 'SIN NOMBRE'))) | upper)
-                            }}</p>
-
-                        <table class="table table-bordered">
-                            <tbody id="preview_fields">
-                            {% for field in selected_fields %}
-                            <tr>
-                                <th style="width: 30%">{{ minuta_config.get('field_labels', {}).get(field,
-                                    field|replace('_', '
-                                    ')|capitalize) }}
-                                </th>
-                                <td>{{ iniciativa.get(field, '') }}</td>
-                            </tr>
-                            {% endfor %}
-                            </tbody>
-                        </table>
-
-                        <!-- Modificación para la sección de vista previa de imágenes en minuta_generator.html -->
-
-                        <div id="preview_images" class="row mt-3">
-                            {% for img_id in minuta_config.get('selected_images', []) %}
-                            {% for file in files %}
-                            {% if file._id|string == img_id %}
-                            <div class="col-md-4 text-center mb-3">
-                                <div class="text-center"
-                                     style="height: 200px; display: flex; align-items: center; justify-content: center; border: 1px solid #ddd; padding: 5px;">
-                                    <img src="{{ url_for('colaborador.download_file', iniciativa_id=iniciativa_id, file_id=file._id) }}"
-                                         style="max-width: 100%; max-height: 190px; object-fit: contain;">
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="show_project_section"
+                                               name="show_project_section"
+                                               {% if minuta_config.get('show_project_section', True) %}checked{% endif
+                                        %}>
+                                        <label class="form-check-label" for="show_project_section">
+                                            Mostrar sección "El proyecto contempla"
+                                        </label>
+                                    </div>
                                 </div>
-                                <p class="small mt-1">{{ file.original_filename }}</p>
-                            </div>
-                            {% endif %}
-                            {% endfor %}
-                            {% endfor %}
-                        </div>
 
-                        <div id="preview_project_section" class="mt-3" {% if not minuta_config.get(
-                        'show_project_section', True) %}style="display:none;"{% endif %}>
-                        <p><strong id="preview_project_title">{{ minuta_config.get('project_section_title', 'El proyecto
-                            contempla:') }}</strong></p>
-                        <ul class="checkmark-list" id="preview_features_list">
-                            {% set features = minuta_config.get('project_features', iniciativa.get('descripcion', ''))
-                            %}
-                            {% set feature_lines = features.split('\n') %}
-                            {% for line in feature_lines if line.strip() %}
-                            <li>✅ {{ line.strip().replace('✅ ', '') }}</li>
-                            {% endfor %}
-                        </ul>
+                                <div id="project_section_config" {% if not minuta_config.get(
+                                'show_project_section', True) %}style="display:none;"{% endif %}>
+                                <div class="mb-3">
+                                    <label for="project_section_title" class="form-label">Título de la sección</label>
+                                    <input type="text" class="form-control" id="project_section_title"
+                                           name="project_section_title"
+                                           value="{{ minuta_config.get('project_section_title', 'El proyecto contempla:') }}">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="project_features" class="form-label">Características del
+                                        proyecto</label>
+                                    <div class="mb-2">
+                                        <small class="text-muted">Ingrese una característica por línea. Cada línea se
+                                            mostrará
+                                            con un marcador de verificación (✅).</small>
+                                    </div>
+                                    <textarea class="form-control" id="project_features" name="project_features"
+                                              rows="6">{{ minuta_config.get('project_features', iniciativa.get('descripcion', ''))|replace('✅ ', '') }}</textarea>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-        <!-- Botones de acción -->
-        <div class="mt-4 d-flex justify-content-between">
-            <div>
-                <button type="submit" class="btn btn-primary" name="save">
-                    <i class="fas fa-save me-2"></i>Guardar Configuración
-                </button>
+        <!-- Vista previa de la minuta -->
+        <div class="preview-box mt-4">
+            <h5>Vista Previa de Campos Seleccionados</h5>
+            <div id="previewContent" class="mt-3">
+                <p class="minuta-title" id="preview_title">{{ minuta_config.get('title', 'MINUTA PROYECTO: ' +
+                    (iniciativa.get('nombre_iniciativa', iniciativa.get('nombre', 'SIN NOMBRE'))) | upper) }}</p>
+
+                <table class="table table-bordered">
+                    <tbody id="preview_fields">
+                    {% for field in selected_fields %}
+                    <tr>
+                        <th style="width: 30%">{{ minuta_config.get('field_labels', {}).get(field, field|replace('_', '
+                            ')|capitalize) }}
+                        </th>
+                        <td>{{ iniciativa.get(field, '') }}</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+
+                <!-- Sección "El proyecto contempla" -->
+                <div id="preview_project_section" class="mt-3" {% if not minuta_config.get(
+                'show_project_section', True) %}style="display:none;"{% endif %}>
+                <p><strong id="preview_project_title">{{ minuta_config.get('project_section_title', 'El proyecto
+                    contempla:') }}</strong></p>
+                <ul class="checkmark-list" id="preview_features_list">
+                    {% set features = minuta_config.get('project_features', iniciativa.get('descripcion', '')) %}
+                    {% set feature_lines = features.split('\n') %}
+                    {% for line in feature_lines if line.strip() %}
+                    <li>{{ line.strip().replace('✅ ', '') }}</li>
+                    {% endfor %}
+                </ul>
             </div>
-            <div>
-                <button type="submit" class="btn btn-info me-2" name="preview">
-                    <i class="fas fa-eye me-2"></i>Vista Previa
-                </button>
-                <button type="submit" class="btn btn-success" name="download">
-                    <i class="fas fa-file-pdf me-2"></i>Descargar PDF
-                </button>
+
+            <!-- Vista previa de imágenes -->
+            <div id="preview_images" class="row mt-3">
+                {% for img_id in minuta_config.get('selected_images', []) %}
+                {% for file in files %}
+                {% if file._id|string == img_id %}
+                <div class="col-md-4 text-center mb-3">
+                    <div class="text-center"
+                         style="height: 200px; display: flex; align-items: center; justify-content: center; border: 1px solid #ddd; padding: 5px;">
+                        <img src="{{ url_for('director.download_file', iniciativa_id=iniciativa_id, file_id=file._id) }}"
+                             style="max-width: 100%; max-height: 190px; object-fit: contain;">
+                    </div>
+                    <p class="small mt-1">{{ file.original_filename }}</p>
+                </div>
+                {% endif %}
+                {% endfor %}
+                {% endfor %}
             </div>
         </div>
-        </form>
     </div>
+
+    <!-- Botones de acción -->
+    <div class="mt-4 d-flex justify-content-between">
+        <div>
+            <button type="submit" class="btn btn-primary" name="save">
+                <i class="fas fa-save me-2"></i>Guardar Configuración
+            </button>
+        </div>
+        <div>
+            <button type="submit" class="btn btn-info me-2" name="preview">
+                <i class="fas fa-eye me-2"></i>Vista Previa
+            </button>
+            <button type="submit" class="btn btn-success" name="download">
+                <i class="fas fa-file-pdf me-2"></i>Descargar PDF
+            </button>
+        </div>
+    </div>
+    </form>
+</div>
 </div>
 </div>
 {% endblock %}
@@ -280,10 +295,10 @@
         }
         updatePreview();
     });
+
     // Actualizar para manejar los cambios en la sección "El proyecto contempla"
     document.getElementById('project_section_title').addEventListener('input', updatePreview);
     document.getElementById('project_features').addEventListener('input', updatePreview);
-
 
     // Función para mostrar/ocultar el personalizador de etiquetas
     function toggleFieldCustomizer(fieldName) {
@@ -368,13 +383,14 @@
             features.forEach(feature => {
                 if (feature.trim()) {
                     const li = document.createElement('li');
-                    li.innerHTML = `✅ ${feature.trim()}`;
+                    li.innerHTML = `${feature.trim()}`;
                     featuresList.appendChild(li);
                 }
             });
         } else {
             projectSectionPreview.style.display = 'none';
         }
+
         // Actualizar imágenes (esta parte es más compleja y puede requerir cargar dinámicamente)
         // En una implementación real, podrías recargar las imágenes mediante AJAX
     }
@@ -397,7 +413,5 @@
             input.addEventListener('input', updatePreview);
         });
     });
-
-
 </script>
 {% endblock %}
