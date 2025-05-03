@@ -103,9 +103,12 @@
                             </div>
                         </div>
                         <div class="d-flex gap-2">
-                            <a href="{{ url_for('colaborador.view_initiative_detail', iniciativa_id=iniciativa_id) }}"
-                               class="btn btn-outline-secondary btn-sm">
-                                <i class="fas fa-info-circle me-1"></i> Detalles
+
+                            <a href="{{ url_for('colaborador.edit_initiative', iniciativa_id=initiative._id) }}" class="btn btn-outline-secondary btn-sm">
+                                <i class="fas fa-info-circle me-1"></i> Editar
+                            </a>
+                            <a href="{{ url_for('colaborador.generate_minuta', iniciativa_id=initiative._id) }}" class="btn btn-outline-secondary btn-sm">
+                                <i class="fas fa-info-circle me-1"></i> Generar Minuta
                             </a>
                             <a href="{{ url_for('colaborador.dashboard') }}" class="btn btn-outline-secondary btn-sm">
                                 <i class="fas fa-arrow-left me-1"></i> Volver
