@@ -816,7 +816,7 @@ def generate_minuta(iniciativa_id):
         iniciativa = coll.find_one({"_id": ObjectId(iniciativa_id)})
         if not iniciativa:
             flash('Iniciativa no encontrada', 'danger')
-            return redirect(url_for('director.list_initiatives'))
+            return redirect(url_for('colaborador.list_initiatives'))
 
         # Convertir ObjectId a string
         iniciativa_json = {}
@@ -858,12 +858,20 @@ def generate_minuta(iniciativa_id):
             # Obtener imágenes seleccionadas
             selected_images = request.form.getlist('images')
 
-            # Guardar preferencias de minuta en la iniciativa
+            # Obtener configuración de la sección "El proyecto contempla"
+            show_project_section = 'show_project_section' in request.form
+            project_section_title = request.form.get('project_section_title', 'El proyecto contempla:')
+            project_features = request.form.get('project_features', '')
+
+            # Actualizar la configuración de minuta
             minuta_config = {
                 "selected_fields": selected_fields,
                 "field_labels": field_labels,
                 "selected_images": selected_images,
                 "title": request.form.get('minuta_title', 'MINUTA PROYECTO'),
+                "show_project_section": show_project_section,
+                "project_section_title": project_section_title,
+                "project_features": project_features,
                 "updated_at": datetime.utcnow(),
                 "updated_by": current_user.get_id()
             }
@@ -876,14 +884,14 @@ def generate_minuta(iniciativa_id):
 
             # Si el botón presionado fue "preview", redirigir a la vista previa
             if 'preview' in request.form:
-                return redirect(url_for('director.preview_minuta', iniciativa_id=iniciativa_id))
+                return redirect(url_for('colaborador.preview_minuta', iniciativa_id=iniciativa_id))
 
             # Si fue "download", generar el PDF
             if 'download' in request.form:
-                return redirect(url_for('director.download_minuta', iniciativa_id=iniciativa_id))
+                return redirect(url_for('colaborador.download_minuta', iniciativa_id=iniciativa_id))
 
             flash('Configuración de minuta guardada correctamente', 'success')
-            return redirect(url_for('director.generate_minuta', iniciativa_id=iniciativa_id))
+            return redirect(url_for('colaborador.generate_minuta', iniciativa_id=iniciativa_id))
 
         # Para GET, cargar la configuración guardada (si existe)
         minuta_config = iniciativa.get('minuta_config', {})
@@ -919,13 +927,13 @@ def preview_minuta(iniciativa_id):
         iniciativa = coll.find_one({"_id": ObjectId(iniciativa_id)})
         if not iniciativa:
             flash('Iniciativa no encontrada', 'danger')
-            return redirect(url_for('director.list_initiatives'))
+            return redirect(url_for('colaborador.list_initiatives'))
 
         # Obtener configuración de minuta
         minuta_config = iniciativa.get('minuta_config', {})
         if not minuta_config:
             flash('No hay configuración de minuta guardada', 'warning')
-            return redirect(url_for('director.generate_minuta', iniciativa_id=iniciativa_id))
+            return redirect(url_for('colaborador.generate_minuta', iniciativa_id=iniciativa_id))
 
         # Obtener imágenes seleccionadas
         selected_image_ids = minuta_config.get('selected_images', [])
@@ -952,6 +960,26 @@ def preview_minuta(iniciativa_id):
 def download_minuta(iniciativa_id):
     """Descargar minuta como PDF."""
     try:
+
+        # Verificar acceso
+        user = mongo.db.users.find_one({"_id": ObjectId(current_user.get_id())})
+        if not user:
+            flash('Usuario no encontrado', 'danger')
+            return redirect(url_for('colaborador.dashboard'))
+
+        has_access = False
+        for iniciativa in user.get('iniciativas', []):
+            if iniciativa.get('initiative_id') == iniciativa_id and iniciativa.get('active', True):
+                has_access = True
+                break
+
+        if not has_access:
+            flash('No tienes acceso a esta iniciativa', 'danger')
+            return redirect(url_for('colaborador.my_initiatives'))
+
+
+
+
         # Obtener la iniciativa
         collection_name = current_app.config['INITIATIVES_COLLECTION']
         parts = collection_name.split('.')
@@ -963,13 +991,13 @@ def download_minuta(iniciativa_id):
         iniciativa = coll.find_one({"_id": ObjectId(iniciativa_id)})
         if not iniciativa:
             flash('Iniciativa no encontrada', 'danger')
-            return redirect(url_for('director.list_initiatives'))
+            return redirect(url_for('colaborador.list_initiatives'))
 
         # Obtener configuración de minuta
         minuta_config = iniciativa.get('minuta_config', {})
         if not minuta_config:
             flash('No hay configuración de minuta guardada', 'warning')
-            return redirect(url_for('director.generate_minuta', iniciativa_id=iniciativa_id))
+            return redirect(url_for('colaborador.generate_minuta', iniciativa_id=iniciativa_id))
 
         # Obtener imágenes seleccionadas
         selected_image_ids = minuta_config.get('selected_images', [])
@@ -1028,32 +1056,49 @@ def download_minuta(iniciativa_id):
             elements.append(table)
             elements.append(Spacer(1, 0.25 * inch))
 
-        # Sección "El proyecto contempla"
-        elements.append(Paragraph("<b>El proyecto contempla:</b>", normal_style))
-        elements.append(Spacer(1, 0.1 * inch))
 
-        # Lista de elementos con viñetas
-        bullet_items = []
+        # Sección "El proyecto contempla" (configurable)
+        if minuta_config.get('show_project_section', True):
+            section_title = minuta_config.get('project_section_title', 'El proyecto contempla:')
+            elements.append(Paragraph(f"<b>{section_title}</b>", normal_style))
+            elements.append(Spacer(1, 0.1 * inch))
 
-        if iniciativa.get('descripcion'):
-            desc_lines = iniciativa.get('descripcion').split('\n')
-            for line in desc_lines:
-                if line.strip():
-                    bullet_items.append(ListItem(Paragraph("✅ " + line.strip(), normal_style)))
-        else:
-            bullet_items.append(ListItem(Paragraph("✅ Construcción y habilitación de infraestructura", normal_style)))
+            # Lista de elementos con viñetas
+            bullet_items = []
 
-        if bullet_items:
-            bullets = ListFlowable(
-                bullet_items,
-                bulletType='bullet',
-                start='',
-                bulletFontName='Helvetica',
-                bulletFontSize=10
-            )
-            elements.append(bullets)
+            project_features = minuta_config.get('project_features', '')
+            if project_features:
+                feature_lines = project_features.split('\n')
+                for line in feature_lines:
+                    line = line.strip()
+                    if line:
+                        # Eliminar el emoji de verificación si ya está presente
+                        if line.startswith('✅'):
+                            line = line[1:].strip()
+                        bullet_items.append(ListItem(Paragraph("✅ " + line, normal_style)))
+            elif iniciativa.get('descripcion'):
+                desc_lines = iniciativa.get('descripcion').split('\n')
+                for line in desc_lines:
+                    if line.strip():
+                        # Eliminar el emoji de verificación si ya está presente
+                        if line.strip().startswith('✅'):
+                            line = line[1:].strip()
+                        bullet_items.append(ListItem(Paragraph("✅ " + line.strip(), normal_style)))
+            else:
+                bullet_items.append(
+                    ListItem(Paragraph("✅ Construcción y habilitación de infraestructura", normal_style)))
 
-        elements.append(Spacer(1, 0.25 * inch))
+            if bullet_items:
+                bullets = ListFlowable(
+                    bullet_items,
+                    bulletType='bullet',
+                    start='',
+                    bulletFontName='Helvetica',
+                    bulletFontSize=10
+                )
+                elements.append(bullets)
+
+            elements.append(Spacer(1, 0.25 * inch))
 
         # Imágenes
         if images:

@@ -1463,11 +1463,6 @@ def generate_minuta(iniciativa_id):
             # Obtener imágenes seleccionadas
             selected_images = request.form.getlist('images')
 
-            # En app/director/routes.py y app/colaborador/routes.py (función generate_minuta)
-
-            # Dentro del bloque if request.method == 'POST':
-            # Añadir debajo de la parte donde se procesan las imágenes seleccionadas
-
             # Obtener configuración de la sección "El proyecto contempla"
             show_project_section = 'show_project_section' in request.form
             project_section_title = request.form.get('project_section_title', 'El proyecto contempla:')

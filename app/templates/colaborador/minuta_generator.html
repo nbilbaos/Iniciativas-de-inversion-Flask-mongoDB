@@ -1,4 +1,4 @@
-<!-- app/templates/director/minuta_generator.html -->
+<!-- app/templates/colaborador/minuta_generator.html -->
 {% extends "base.html" %}
 
 {% block title %}Generador de Minuta{% endblock %}
@@ -69,7 +69,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>Generador de Minuta</h1>
         <div>
-            <a href="{{ url_for('director.view_initiative', iniciativa_id=iniciativa_id) }}" class="btn btn-secondary">
+            <a href="{{ url_for('colaborador.view_initiative_detail', iniciativa_id=iniciativa_id) }}" class="btn btn-secondary">
                 <i class="fas fa-arrow-left me-2"></i>Volver a la Iniciativa
             </a>
         </div>
@@ -140,7 +140,7 @@
                                 {% for file in files %}
                                 <div class="col-md-4 col-sm-6 mb-3 text-center">
                                     <div class="image-selection">
-                                        <img src="{{ url_for('director.download_file', iniciativa_id=iniciativa_id, file_id=file._id) }}"
+                                        <img src="{{ url_for('colaborador.download_file', iniciativa_id=iniciativa_id, file_id=file._id) }}"
                                              class="image-thumbnail {{ 'selected' if file._id|string in selected_images else '' }}"
                                              data-file-id="{{ file._id }}"
                                              onclick="toggleImageSelection(this)">
@@ -247,7 +247,7 @@
                 <div class="col-md-4 text-center mb-3">
                     <div class="text-center"
                          style="height: 200px; display: flex; align-items: center; justify-content: center; border: 1px solid #ddd; padding: 5px;">
-                        <img src="{{ url_for('director.download_file', iniciativa_id=iniciativa_id, file_id=file._id) }}"
+                        <img src="{{ url_for('colaborador.download_file', iniciativa_id=iniciativa_id, file_id=file._id) }}"
                              style="max-width: 100%; max-height: 190px; object-fit: contain;">
                     </div>
                     <p class="small mt-1">{{ file.original_filename }}</p>
