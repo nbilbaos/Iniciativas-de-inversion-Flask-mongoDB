@@ -2,14 +2,15 @@ from flask_login import UserMixin
 from bson.objectid import ObjectId
 from datetime import datetime
 
-
 class User(UserMixin):
     """Modelo de usuario para la autenticación con Flask-Login."""
 
     def __init__(self, _id=None, email=None, password=None, role=None,
                  active=True, created_at=None, last_login=None,
                  nombre=None, rut=None, direccion=None, telefono=None,
-                 titulos=None, iniciativas=None, **kwargs):
+                 titulos=None, iniciativas=None, profile_image=None,
+                 cargo=None, area_especializacion=None, certificaciones=None,
+                 idiomas=None, **kwargs):
         self._id = _id if _id else ObjectId()
         self.email = email
         self.password = password
@@ -18,12 +19,19 @@ class User(UserMixin):
         self.created_at = created_at if created_at else datetime.utcnow()
         self.last_login = last_login
 
-        # Nuevos campos
+        # Campos básicos
         self.nombre = nombre or ""
         self.rut = rut or ""
         self.direccion = direccion or ""
         self.telefono = telefono or ""
         self.titulos = titulos or []
+
+        # Campos nuevos para el perfil mejorado
+        self.profile_image = profile_image  # Nombre del archivo de imagen de perfil
+        self.cargo = cargo or ""  # Cargo actual del usuario
+        self.area_especializacion = area_especializacion or ""  # Área de especialización
+        self.certificaciones = certificaciones or []  # Lista de certificaciones
+        self.idiomas = idiomas or []  # Lista de idiomas que maneja
 
         # Iniciativas asignadas (solo para colaboradores)
         # Lista de diccionarios con formato:
@@ -71,7 +79,13 @@ class User(UserMixin):
             'direccion': self.direccion,
             'telefono': self.telefono,
             'titulos': self.titulos,
-            'iniciativas': self.iniciativas
+            'iniciativas': self.iniciativas,
+            # Campos nuevos
+            'profile_image': self.profile_image,
+            'cargo': self.cargo,
+            'area_especializacion': self.area_especializacion,
+            'certificaciones': self.certificaciones,
+            'idiomas': self.idiomas
         }
 
     def add_iniciativa(self, iniciativa_id, collection_name, assigned_by):

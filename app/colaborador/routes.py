@@ -3,6 +3,7 @@ from flask import render_template, redirect, url_for, flash, request, current_ap
 from flask_login import login_required, current_user
 from datetime import datetime
 from bson.objectid import ObjectId
+from werkzeug.utils import secure_filename
 
 from . import colaborador_bp
 from ..auth.utils import role_required
@@ -20,11 +21,8 @@ from reportlab.lib.units import inch
 import base64
 import os
 
-
-
 # Constante para la colección de metadatos de la base de datos
 METADATA_COLLECTION = 'db_metadata'
-
 
 @colaborador_bp.route('/dashboard')
 @login_required
@@ -223,12 +221,172 @@ def dashboard():
         flash(f'Error al cargar el dashboard: {str(e)}', 'danger')
         return redirect(url_for('auth.login'))
 
+
 @colaborador_bp.route('/profile')
 @login_required
 @role_required(['colaborador'])
 def profile():
-    """Perfil del colaborador."""
-    return render_template('colaborador/profile.html')
+    """Perfil mejorado del colaborador."""
+    try:
+        # Obtener datos completos del usuario
+        user_data = mongo.db.users.find_one({"_id": ObjectId(current_user.get_id())})
+
+        if not user_data:
+            flash('Usuario no encontrado', 'danger')
+            return redirect(url_for('colaborador.dashboard'))
+
+        # Obtener estadísticas para mostrar en el perfil
+        # 1. Contar iniciativas asignadas
+        assigned_initiatives = user_data.get('iniciativas', [])
+        active_initiatives = [i for i in assigned_initiatives if i.get('active', True)]
+
+        # 2. Contar tareas totales, completadas y calcular tasa de finalización
+        tasks = list(mongo.db.tasks.find({
+            "$or": [
+                {"assigned_to": current_user.get_id()},
+                {"created_by": current_user.get_id()}
+            ]
+        }))
+
+        completed_tasks = [t for t in tasks if t.get('is_completed', False)]
+
+        completion_rate = 0
+        if tasks:
+            completion_rate = round((len(completed_tasks) / len(tasks)) * 100)
+
+        stats = {
+            'total_iniciativas': len(active_initiatives),
+            'total_tasks': len(tasks),
+            'completed_tasks': len(completed_tasks),
+            'completion_rate': completion_rate
+        }
+
+        return render_template(
+            'colaborador/profile.html',
+            current_user=user_data,
+            stats=stats
+        )
+
+    except Exception as e:
+        import traceback
+        print(f"Error en profile: {traceback.format_exc()}")
+        flash(f'Error al cargar el perfil: {str(e)}', 'danger')
+        return redirect(url_for('colaborador.dashboard'))
+
+
+@colaborador_bp.route('/profile/update', methods=['POST'])
+@login_required
+@role_required(['colaborador'])
+def update_profile():
+    """Actualizar datos del perfil del colaborador."""
+    try:
+        # Obtener campos del formulario
+        nombre = request.form.get('nombre')
+        rut = request.form.get('rut')
+        telefono = request.form.get('telefono')
+        direccion = request.form.get('direccion')
+        cargo = request.form.get('cargo')
+        area_especializacion = request.form.get('area_especializacion')
+
+        # Procesar listas (separadas por coma)
+        titulos_raw = request.form.get('titulos', '')
+        titulos = [t.strip() for t in titulos_raw.split(',') if t.strip()] if titulos_raw else []
+
+        certificaciones_raw = request.form.get('certificaciones', '')
+        certificaciones = [c.strip() for c in certificaciones_raw.split(',') if
+                           c.strip()] if certificaciones_raw else []
+
+        idiomas_raw = request.form.get('idiomas', '')
+        idiomas = [i.strip() for i in idiomas_raw.split(',') if i.strip()] if idiomas_raw else []
+
+        # Procesar imagen de perfil si se ha subido
+        profile_image = request.files.get('profile_image')
+        profile_image_filename = None
+
+        if profile_image and profile_image.filename:
+            # Validar tipo de archivo
+            if profile_image.content_type.startswith('image/'):
+                # Generar nombre de archivo único
+                filename = secure_filename(profile_image.filename)
+                unique_filename = f"{uuid.uuid4().hex}_{filename}"
+
+                # Preparar ruta para guardar
+                uploads_folder = os.path.join(
+                    current_app.static_folder, 'uploads', 'profile'
+                )
+                os.makedirs(uploads_folder, exist_ok=True)
+
+                # Guardar imagen original
+                file_path = os.path.join(uploads_folder, unique_filename)
+                profile_image.save(file_path)
+
+                # Procesar imagen para estandarizar tamaño
+                try:
+                    from PIL import Image
+
+                    # Abrir imagen
+                    img = Image.open(file_path)
+
+                    # Recortar a cuadrado si no lo es
+                    width, height = img.size
+                    size = min(width, height)
+                    left = (width - size) // 2
+                    top = (height - size) // 2
+                    right = left + size
+                    bottom = top + size
+                    img = img.crop((left, top, right, bottom))
+
+                    # Redimensionar a 300x300
+                    img = img.resize((300, 300), Image.LANCZOS)
+
+                    # Guardar imagen procesada
+                    img.save(file_path)
+
+                    # Guardar nombre de archivo para la BD
+                    profile_image_filename = unique_filename
+
+                except Exception as img_error:
+                    # Si hay error al procesar, mantener la imagen original
+                    print(f"Error al procesar imagen: {str(img_error)}")
+                    profile_image_filename = unique_filename
+            else:
+                flash('El archivo seleccionado no es una imagen válida', 'warning')
+
+        # Preparar datos para actualizar
+        update_data = {
+            "nombre": nombre,
+            "rut": rut,
+            "telefono": telefono,
+            "direccion": direccion,
+            "cargo": cargo,
+            "area_especializacion": area_especializacion,
+            "titulos": titulos,
+            "certificaciones": certificaciones,
+            "idiomas": idiomas,
+        }
+
+        # Añadir imagen de perfil si se ha procesado
+        if profile_image_filename:
+            update_data["profile_image"] = profile_image_filename
+
+        # Actualizar en la base de datos
+        result = mongo.db.users.update_one(
+            {"_id": ObjectId(current_user.get_id())},
+            {"$set": update_data}
+        )
+
+        if result.modified_count > 0:
+            flash('Perfil actualizado correctamente', 'success')
+        else:
+            flash('No se realizaron cambios en el perfil', 'info')
+
+        return redirect(url_for('colaborador.profile'))
+
+    except Exception as e:
+        import traceback
+        print(f"Error al actualizar perfil: {traceback.format_exc()}")
+        flash(f'Error al actualizar el perfil: {str(e)}', 'danger')
+        return redirect(url_for('colaborador.profile'))
 
 
 @colaborador_bp.route('/tasks')

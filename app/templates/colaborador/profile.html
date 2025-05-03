@@ -2,68 +2,505 @@
 
 {% block title %}Mi Perfil{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* Estilos para el perfil */
+    .profile-header {
+        background-color: #f8f9fa;
+        border-radius: 10px;
+        padding: 30px;
+        margin-bottom: 30px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+    
+    .profile-avatar-container {
+        position: relative;
+        width: 150px;
+        height: 150px;
+        margin: 0 auto;
+    }
+    
+    .profile-avatar {
+        width: 150px;
+        height: 150px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 3px solid #fff;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        background-color: #f1f1f1;
+    }
+    
+    .avatar-edit-btn {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background-color: #007bff;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        border: 2px solid #fff;
+        transition: all 0.3s;
+    }
+    
+    .avatar-edit-btn:hover {
+        background-color: #0056b3;
+    }
+    
+    .profile-info-card {
+        border-radius: 10px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        margin-bottom: 20px;
+        transition: transform 0.3s, box-shadow 0.3s;
+        overflow: hidden;
+    }
+    
+    .profile-info-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+    }
+    
+    .readonly-mode .edit-controls {
+        display: none;
+    }
+    
+    .edit-mode .display-info {
+        display: none;
+    }
+    
+    .edit-mode .edit-controls {
+        display: block;
+    }
+    
+    .readonly-mode .edit-controls {
+        display: none;
+    }
+    
+    .profile-section-icon {
+        font-size: 1.5rem;
+        opacity: 0.8;
+        margin-right: 10px;
+    }
+    
+    .badge-section {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        margin-top: 10px;
+    }
+    
+    .profile-badge {
+        padding: 5px 10px;
+        border-radius: 15px;
+        font-size: 0.85rem;
+    }
+    
+    .profile-stats {
+        display: flex;
+        justify-content: space-around;
+        text-align: center;
+        padding: 15px 0;
+        border-top: 1px solid rgba(0, 0, 0, 0.1);
+        margin-top: 20px;
+    }
+    
+    .stat-item {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #007bff;
+    }
+    
+    .stat-label {
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container py-4">
-    <div class="row">
-        <div class="col-md-8 offset-md-2">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h4 class="mb-0">Mi Perfil</h4>
+    <form method="POST" action="{{ url_for('colaborador.update_profile') }}" enctype="multipart/form-data" id="profile-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        
+        <!-- Header con foto de perfil y nombre -->
+        <div class="profile-header">
+            <div class="row">
+                <div class="col-md-4 text-center">
+                    <div class="profile-avatar-container mb-3">
+                        {% if current_user.profile_image %}
+                            <img src="{{ url_for('static', filename='uploads/profile/' + current_user.profile_image) }}" class="profile-avatar" id="profile-avatar" alt="{{ current_user.nombre }}">
+                        {% else %}
+                            <div class="profile-avatar d-flex align-items-center justify-content-center">
+                                <i class="fas fa-user text-secondary" style="font-size: 64px;"></i>
+                            </div>
+                        {% endif %}
+                        <label for="profile_image" class="avatar-edit-btn">
+                            <i class="fas fa-camera"></i>
+                        </label>
+                        <input type="file" id="profile_image" name="profile_image" style="display: none;" accept="image/*">
+                    </div>
+                    
+                    <h3 class="mb-1">{{ current_user.nombre or current_user.email }}</h3>
+                    <p class="text-muted">{{ current_user.role|capitalize }}</p>
+                    
+                    <div class="mt-3">
+                        <button type="button" class="btn btn-primary" id="edit-profile-btn">
+                            <i class="fas fa-edit me-2"></i>Editar Perfil
+                        </button>
+                        <button type="submit" class="btn btn-success d-none" id="save-profile-btn">
+                            <i class="fas fa-save me-2"></i>Guardar Cambios
+                        </button>
+                        <button type="button" class="btn btn-secondary d-none" id="cancel-edit-btn">
+                            <i class="fas fa-times me-2"></i>Cancelar
+                        </button>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <div class="row mb-4">
-                        <div class="col-md-3 text-center">
-                            <div class="avatar-placeholder rounded-circle bg-light d-flex align-items-center justify-content-center" style="width: 150px; height: 150px; font-size: 64px;">
-                                <i class="fas fa-user text-secondary"></i>
-                            </div>
+                
+                <div class="col-md-8">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <p><strong>Email:</strong> {{ current_user.email }}</p>
+                            <p><strong>RUT:</strong> 
+                                <span class="display-info">{{ current_user.rut or 'No especificado' }}</span>
+                                <span class="edit-controls d-none">
+                                    <input type="text" class="form-control" name="rut" id="rut" value="{{ current_user.rut or '' }}" placeholder="Ingrese su RUT">
+                                </span>
+                            </p>
+                            <p><strong>Teléfono:</strong> 
+                                <span class="display-info">{{ current_user.telefono or 'No especificado' }}</span>
+                                <span class="edit-controls d-none">
+                                    <input type="text" class="form-control" name="telefono" id="telefono" value="{{ current_user.telefono or '' }}" placeholder="Ingrese su teléfono">
+                                </span>
+                            </p>
                         </div>
-                        <div class="col-md-9">
-                            <h3>{{ current_user.email }}</h3>
-                            <p class="text-muted">Colaborador</p>
-                            
-                            <div class="mt-3">
-                                <p><strong>Fecha de registro:</strong> 
-                                    {% if current_user.created_at %}
-                                        {{ current_user.created_at.strftime('%d/%m/%Y') }}
-                                    {% else %}
-                                        No disponible
-                                    {% endif %}
-                                </p>
-                                <p><strong>Último acceso:</strong> 
-                                    {% if current_user.last_login %}
-                                        {{ current_user.last_login.strftime('%d/%m/%Y %H:%M:%S') }}
-                                    {% else %}
-                                        Primer ingreso
-                                    {% endif %}
-                                </p>
-                            </div>
+                        <div class="col-md-6">
+                            <p><strong>Fecha de registro:</strong> 
+                                {{ current_user.created_at.strftime('%d/%m/%Y') if current_user.created_at else 'No disponible' }}
+                            </p>
+                            <p><strong>Último acceso:</strong> 
+                                {{ current_user.last_login.strftime('%d/%m/%Y %H:%M:%S') if current_user.last_login else 'Primer ingreso' }}
+                            </p>
+                            <p><strong>Estado:</strong> 
+                                <span class="badge bg-success">Activo</span>
+                            </p>
                         </div>
                     </div>
                     
-                    <div class="border-top pt-4 mt-2">
-                        <div class="d-flex justify-content-between">
-                            <a href="{{ url_for('colaborador.dashboard') }}" class="btn btn-secondary">
-                                <i class="fas fa-arrow-left me-2"></i> Volver al Dashboard
-                            </a>
-                            <a href="{{ url_for('auth.change_password') }}" class="btn btn-primary">
-                                <i class="fas fa-key me-2"></i> Cambiar Contraseña
-                            </a>
+                    <!-- Estadísticas rápidas -->
+                    <div class="profile-stats">
+                        <div class="stat-item">
+                            <span class="stat-value">{{ stats.total_iniciativas }}</span>
+                            <span class="stat-label">Iniciativas</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value">{{ stats.total_tasks }}</span>
+                            <span class="stat-label">Tareas</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value">{{ stats.completed_tasks }}</span>
+                            <span class="stat-label">Completadas</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value">{{ stats.completion_rate }}%</span>
+                            <span class="stat-label">Efectividad</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <!-- Información personal -->
+            <div class="col-lg-6">
+                <div class="card profile-info-card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-user-circle me-2 profile-section-icon"></i>
+                            Información Personal
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label"><strong>Nombre Completo</strong></label>
+                            <div class="display-info">{{ current_user.nombre or 'No especificado' }}</div>
+                            <div class="edit-controls d-none">
+                                <input type="text" class="form-control" name="nombre" id="nombre" value="{{ current_user.nombre or '' }}" placeholder="Ingrese su nombre completo">
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label"><strong>Dirección</strong></label>
+                            <div class="display-info">{{ current_user.direccion or 'No especificado' }}</div>
+                            <div class="edit-controls d-none">
+                                <input type="text" class="form-control" name="direccion" id="direccion" value="{{ current_user.direccion or '' }}" placeholder="Ingrese su dirección">
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label"><strong>Cargo Actual</strong></label>
+                            <div class="display-info">{{ current_user.cargo or 'No especificado' }}</div>
+                            <div class="edit-controls d-none">
+                                <input type="text" class="form-control" name="cargo" id="cargo" value="{{ current_user.cargo or '' }}" placeholder="Ingrese su cargo actual">
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label"><strong>Área de Especialización</strong></label>
+                            <div class="display-info">{{ current_user.area_especializacion or 'No especificado' }}</div>
+                            <div class="edit-controls d-none">
+                                <input type="text" class="form-control" name="area_especializacion" id="area_especializacion" value="{{ current_user.area_especializacion or '' }}" placeholder="Ingrese su área de especialización">
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
             
-            <div class="card mt-4">
-                <div class="card-header bg-light">
-                    <h5 class="mb-0">Información Adicional</h5>
-                </div>
-                <div class="card-body">
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle me-2"></i> Esta sección está en desarrollo. Próximamente podrás actualizar tu información personal.
+            <!-- Formación y Títulos -->
+            <div class="col-lg-6">
+                <div class="card profile-info-card">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-graduation-cap me-2 profile-section-icon"></i>
+                            Formación y Títulos
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label"><strong>Títulos Académicos</strong></label>
+                            <div class="display-info">
+                                {% if current_user.titulos %}
+                                    <div class="badge-section">
+                                        {% for titulo in current_user.titulos %}
+                                            <span class="badge bg-info profile-badge">{{ titulo }}</span>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    <p class="text-muted">No hay títulos especificados</p>
+                                {% endif %}
+                            </div>
+                            <div class="edit-controls d-none">
+                                <textarea class="form-control" name="titulos" id="titulos" rows="3" placeholder="Ingrese sus títulos (separados por coma)">{{ current_user.titulos|join(', ') if current_user.titulos else '' }}</textarea>
+                                <div class="form-text">Ingrese sus títulos separados por comas (ej. Ingeniero Civil, MBA, Doctor en Ciencias)</div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label"><strong>Certificaciones</strong></label>
+                            <div class="display-info">
+                                {% if current_user.certificaciones %}
+                                    <div class="badge-section">
+                                        {% for certificacion in current_user.certificaciones %}
+                                            <span class="badge bg-warning text-dark profile-badge">{{ certificacion }}</span>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    <p class="text-muted">No hay certificaciones especificadas</p>
+                                {% endif %}
+                            </div>
+                            <div class="edit-controls d-none">
+                                <textarea class="form-control" name="certificaciones" id="certificaciones" rows="3" placeholder="Ingrese sus certificaciones (separadas por coma)">{{ current_user.certificaciones|join(', ') if current_user.certificaciones else '' }}</textarea>
+                                <div class="form-text">Ingrese sus certificaciones separadas por comas</div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label"><strong>Idiomas</strong></label>
+                            <div class="display-info">
+                                {% if current_user.idiomas %}
+                                    <div class="badge-section">
+                                        {% for idioma in current_user.idiomas %}
+                                            <span class="badge bg-secondary profile-badge">{{ idioma }}</span>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    <p class="text-muted">No hay idiomas especificados</p>
+                                {% endif %}
+                            </div>
+                            <div class="edit-controls d-none">
+                                <textarea class="form-control" name="idiomas" id="idiomas" rows="2" placeholder="Ingrese los idiomas que domina (separados por coma)">{{ current_user.idiomas|join(', ') if current_user.idiomas else '' }}</textarea>
+                                <div class="form-text">Ej. Español (Nativo), Inglés (Avanzado), Francés (Básico)</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
+        
+        <!-- Enlaces rápidos -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card profile-info-card">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-link me-2 profile-section-icon"></i>
+                            Acciones Rápidas
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center">
+                            <div class="col-md-3 col-6 mb-3">
+                                <a href="{{ url_for('auth.change_password') }}" class="btn btn-outline-primary btn-lg w-100 h-100 d-flex flex-column align-items-center justify-content-center" style="min-height: 100px;">
+                                    <i class="fas fa-key mb-2" style="font-size: 2rem;"></i>
+                                    <span>Cambiar Contraseña</span>
+                                </a>
+                            </div>
+                            <div class="col-md-3 col-6 mb-3">
+                                <a href="{{ url_for('colaborador.my_initiatives') }}" class="btn btn-outline-success btn-lg w-100 h-100 d-flex flex-column align-items-center justify-content-center" style="min-height: 100px;">
+                                    <i class="fas fa-project-diagram mb-2" style="font-size: 2rem;"></i>
+                                    <span>Mis Iniciativas</span>
+                                </a>
+                            </div>
+                            <div class="col-md-3 col-6 mb-3">
+                                <a href="{{ url_for('colaborador.my_tasks') }}" class="btn btn-outline-warning btn-lg w-100 h-100 d-flex flex-column align-items-center justify-content-center" style="min-height: 100px;">
+                                    <i class="fas fa-tasks mb-2" style="font-size: 2rem;"></i>
+                                    <span>Mis Tareas</span>
+                                </a>
+                            </div>
+                            <div class="col-md-3 col-6 mb-3">
+                                <a href="{{ url_for('colaborador.dashboard') }}" class="btn btn-outline-secondary btn-lg w-100 h-100 d-flex flex-column align-items-center justify-content-center" style="min-height: 100px;">
+                                    <i class="fas fa-tachometer-alt mb-2" style="font-size: 2rem;"></i>
+                                    <span>Dashboard</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Referencias a elementos
+        const profileForm = document.getElementById('profile-form');
+        const editBtn = document.getElementById('edit-profile-btn');
+        const saveBtn = document.getElementById('save-profile-btn');
+        const cancelBtn = document.getElementById('cancel-edit-btn');
+        const profileImage = document.getElementById('profile_image');
+        const profileAvatar = document.getElementById('profile-avatar');
+        
+        // Estado inicial: modo de solo lectura
+        profileForm.classList.add('readonly-mode');
+        
+        // Botón para activar modo de edición
+        editBtn.addEventListener('click', function() {
+            profileForm.classList.remove('readonly-mode');
+            profileForm.classList.add('edit-mode');
+            
+            // Mostrar/ocultar botones
+            editBtn.classList.add('d-none');
+            saveBtn.classList.remove('d-none');
+            cancelBtn.classList.remove('d-none');
+            
+            // Mostrar todos los controles de edición
+            document.querySelectorAll('.edit-controls').forEach(el => {
+                el.classList.remove('d-none');
+            });
+            
+            // Ocultar información de solo lectura
+            document.querySelectorAll('.display-info').forEach(el => {
+                el.classList.add('d-none');
+            });
+        });
+        
+        // Botón para cancelar la edición
+        cancelBtn.addEventListener('click', function() {
+            profileForm.classList.add('readonly-mode');
+            profileForm.classList.remove('edit-mode');
+            
+            // Mostrar/ocultar botones
+            editBtn.classList.remove('d-none');
+            saveBtn.classList.add('d-none');
+            cancelBtn.classList.add('d-none');
+            
+            // Ocultar todos los controles de edición
+            document.querySelectorAll('.edit-controls').forEach(el => {
+                el.classList.add('d-none');
+            });
+            
+            // Mostrar información de solo lectura
+            document.querySelectorAll('.display-info').forEach(el => {
+                el.classList.remove('d-none');
+            });
+            
+            // Restablecer los valores originales en los campos de formulario
+            profileForm.reset();
+        });
+        
+        // Vista previa de la imagen seleccionada
+        profileImage.addEventListener('change', function() {
+            if (this.files && this.files[0]) {
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    // Si existe el elemento de imagen, actualizarlo
+                    if (profileAvatar) {
+                        if (profileAvatar.tagName === 'IMG') {
+                            profileAvatar.src = e.target.result;
+                        } else {
+                            // Si es un div (placeholder), reemplazarlo por una imagen
+                            const img = document.createElement('img');
+                            img.src = e.target.result;
+                            img.className = 'profile-avatar';
+                            img.id = 'profile-avatar';
+                            img.alt = 'Foto de perfil';
+                            
+                            profileAvatar.parentNode.replaceChild(img, profileAvatar);
+                        }
+                    }
+                };
+                
+                reader.readAsDataURL(this.files[0]);
+            }
+        });
+        
+        // Formato para RUT chileno
+        const rutInput = document.getElementById('rut');
+        if (rutInput) {
+            rutInput.addEventListener('input', function(e) {
+                // Eliminar caracteres no deseados (sólo permitir números y K)
+                let value = this.value.replace(/[^\dkK]/g, '');
+                
+                // No hacer nada si está vacío
+                if (!value) {
+                    this.value = '';
+                    return;
+                }
+                
+                // Separar dígito verificador
+                let cuerpo = value;
+                let dv = '';
+                
+                if (value.length > 1) {
+                    // El último carácter es el dígito verificador
+                    dv = value.charAt(value.length - 1);
+                    cuerpo = value.slice(0, -1);
+                    
+                    // Formatear cuerpo con puntos
+                    if (cuerpo.length > 3) {
+                        cuerpo = cuerpo.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+                    }
+                    
+                    // Unir con guión
+                    this.value = cuerpo + '-' + dv;
+                } else {
+                    this.value = value;
+                }
+            });
+        }
+    });
+</script>
 {% endblock %}
