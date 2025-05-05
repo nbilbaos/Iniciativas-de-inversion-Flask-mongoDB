@@ -1,0 +1,11 @@
+.git
+.gitignore
+.env
+__pycache__/
+*.py[cod]
+*.so
+.Python
+venv/
+*/uploads/*
+*/temp_uploads/*
+.DS_Store

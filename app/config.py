@@ -64,6 +64,13 @@ class ProductionConfig(Config):
     DEBUG = False
     SESSION_COOKIE_SECURE = True
 
+    # Override MongoDB URI with environment variable if provided
+    MONGO_URI = os.environ.get('MONGO_URI', Config.MONGO_URI)
+
+    # Set a longer request timeout for production
+    MONGO_CONNECT_TIMEOUT_MS = 30000
+    MONGO_SERVER_SELECTION_TIMEOUT_MS = 30000
+
 
 # Configuración según el entorno
 config_by_name = {

@@ -62,11 +62,39 @@ def setup_required_collections(app, mongo):
 def create_app():
     """Función de fábrica para crear la aplicación Flask."""
     # Inicializar la aplicación Flask
-    app = Flask(__name__)
+    app = Flask(__name__, static_folder='static', static_url_path='/static')
     app.config['INITIATIVES_COLLECTION'] = 'db_metadata.iniciativas_2025'
     # Cargar configuración
     from .config import get_config
     app.config.from_object(get_config())
+
+    # Create upload directories explicitly with proper error handling
+    try:
+        upload_dir = app.config.get('UPLOAD_FOLDER')
+        temp_dir = app.config.get('TEMP_UPLOADS')
+        default_files_dir = os.path.join(upload_dir, 'default_files') if upload_dir else None
+
+        # Handle paths more robustly
+        if upload_dir and not os.path.isabs(upload_dir):
+            app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), upload_dir)
+            upload_dir = app.config['UPLOAD_FOLDER']
+
+        if temp_dir and not os.path.isabs(temp_dir):
+            app.config['TEMP_UPLOADS'] = os.path.join(os.path.dirname(os.path.abspath(__file__)), temp_dir)
+            temp_dir = app.config['TEMP_UPLOADS']
+
+        # Create directories if they don't exist
+        for directory in [upload_dir, temp_dir, default_files_dir]:
+            if directory and not os.path.exists(directory):
+                os.makedirs(directory, exist_ok=True)
+                print(f"Created directory: {directory}")
+
+    except Exception as e:
+        print(f"Error creating directories: {str(e)}")
+        # Continue anyway, the .ebextensions will handle this
+
+
+
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
     os.makedirs(app.config['TEMP_UPLOADS'], exist_ok=True)
     os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'default_files'), exist_ok=True)
