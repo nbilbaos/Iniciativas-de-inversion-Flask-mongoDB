@@ -12,8 +12,12 @@ class Config:
     JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY')
 
     # Configuración para archivos
-    UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
-    TEMP_UPLOADS = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'temp_uploads')
+
+    # In config.py
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    UPLOAD_FOLDER = os.path.join(BASE_DIR, 'app', 'uploads')
+    TEMP_UPLOADS = os.path.join(BASE_DIR, 'app', 'temp_uploads')
+
     ALLOWED_EXTENSIONS = {
         # Archivos CAD y 3D
         'dwg', 'dxf', 'dwt', 'dwf', 'dws',  # AutoCAD

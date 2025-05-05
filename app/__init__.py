@@ -93,11 +93,12 @@ def create_app():
         print(f"Error creating directories: {str(e)}")
         # Continue anyway, the .ebextensions will handle this
 
-
-
-    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-    os.makedirs(app.config['TEMP_UPLOADS'], exist_ok=True)
-    os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'default_files'), exist_ok=True)
+    try:
+        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+        os.makedirs(app.config['TEMP_UPLOADS'], exist_ok=True)
+        os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'default_files'), exist_ok=True)
+    except PermissionError:
+        print("Warning: Could not create upload directories. Using .ebextensions configuration instead.")
     # Configuración adicional para sesiones y CSRF
     app.config['SESSION_TYPE'] = 'filesystem'
     app.config['SESSION_PERMANENT'] = False
