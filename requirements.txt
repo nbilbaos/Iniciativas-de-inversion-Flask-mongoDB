@@ -21,8 +21,10 @@ bcrypt==4.0.1
 python-jose==3.3.0
 python-dotenv==1.0.0
 
-# Utils
+# Form validation
 email-validator==2.0.0
+
+# PDF generation - ensuring it's included
 reportlab==3.6.12
 
 # Deployment

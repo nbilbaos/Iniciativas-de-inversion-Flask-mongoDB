@@ -1,12 +1,13 @@
-from flask import Flask, redirect, url_for
+from flask import Flask, redirect, url_for, jsonify
 from flask_pymongo import PyMongo
 from flask_login import LoginManager
 from flask_wtf.csrf import CSRFProtect, generate_csrf
 import bcrypt
 import os
+import sys
+import importlib
 from bson.objectid import ObjectId
 from .health import health_bp
-
 
 # Instancias globales
 mongo = PyMongo()
@@ -90,15 +91,10 @@ def create_app():
                 print(f"Created directory: {directory}")
 
     except Exception as e:
-        print(f"Error creating directories: {str(e)}")
+        print(f"Warning: Could not create directories: {str(e)}")
+        print("Will rely on .platform/hooks for directory creation")
         # Continue anyway, the .ebextensions will handle this
 
-    try:
-        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-        os.makedirs(app.config['TEMP_UPLOADS'], exist_ok=True)
-        os.makedirs(os.path.join(app.config['UPLOAD_FOLDER'], 'default_files'), exist_ok=True)
-    except PermissionError:
-        print("Warning: Could not create upload directories. Using .ebextensions configuration instead.")
     # Configuración adicional para sesiones y CSRF
     app.config['SESSION_TYPE'] = 'filesystem'
     app.config['SESSION_PERMANENT'] = False
@@ -120,12 +116,15 @@ def create_app():
 
     # Crear índices para mejorar la búsqueda
     with app.app_context():
-        collection_name = app.config['INITIATIVES_COLLECTION']
-        parts = collection_name.split('.')
-        if len(parts) > 1:
-            mongo.db[parts[0]][parts[1]].create_index([('nombre_iniciativa', 'text'), ('cod', 'text')])
-        else:
-            mongo.db[collection_name].create_index([('nombre_iniciativa', 'text'), ('cod', 'text')])
+        try:
+            collection_name = app.config['INITIATIVES_COLLECTION']
+            parts = collection_name.split('.')
+            if len(parts) > 1:
+                mongo.db[parts[0]][parts[1]].create_index([('nombre_iniciativa', 'text'), ('cod', 'text')])
+            else:
+                mongo.db[collection_name].create_index([('nombre_iniciativa', 'text'), ('cod', 'text')])
+        except Exception as e:
+            print(f"Warning: Could not create text indexes: {str(e)}")
 
     # Configurar el cargador de usuarios para Flask-Login
     from .models.user import User
@@ -145,6 +144,40 @@ def create_app():
             print(f"Error al cargar usuario: {str(e)}")
             return None
 
+    # Add a diagnostic endpoint
+    @app.route('/api/status')
+    def api_status():
+        """Return information about the application status."""
+        import sys
+        try:
+            import pkg_resources
+            installed_packages = sorted([f"{pkg.key}=={pkg.version}"
+                                         for pkg in pkg_resources.working_set])
+        except Exception as e:
+            installed_packages = ["Error getting packages: " + str(e)]
+
+        # Check for reportlab
+        reportlab_installed = False
+        try:
+            import reportlab
+            reportlab_installed = True
+            reportlab_version = reportlab.__version__
+        except ImportError:
+            reportlab_version = "Not installed"
+
+        status = {
+            'status': 'online',
+            'python_version': sys.version,
+            'reportlab_available': reportlab_installed,
+            'reportlab_version': reportlab_version,
+            'installed_packages': installed_packages
+        }
+
+        return jsonify(status)
+
+    # Register health blueprint first - most important for EB health checks
+    app.register_blueprint(health_bp)
+
     # Registrar blueprints
     from .auth import auth_bp
     app.register_blueprint(auth_bp)
@@ -152,15 +185,35 @@ def create_app():
     from .admin import admin_bp
     app.register_blueprint(admin_bp)
 
-    # En app/__init__.py después de registrar el blueprint
-    from .director import director_bp, init_app as init_director
-    app.register_blueprint(director_bp)
-    init_director(app)
+    # Registrar colaborador blueprint primero para asegurar que la ruta colaborador.dashboard existe
+    try:
+        from .colaborador import colaborador_bp
+        app.register_blueprint(colaborador_bp)
+        print("Collaborator module loaded successfully")
+    except ImportError as e:
+        print(f"Warning: Could not import colaborador module: {str(e)}")
+        # Create a dummy blueprint if colaborador module fails to load
+        from flask import Blueprint
+        colaborador_bp = Blueprint('colaborador', __name__, url_prefix='/colaborador')
 
-    from .colaborador import colaborador_bp
-    app.register_blueprint(colaborador_bp)
+        @colaborador_bp.route('/dashboard')
+        def dashboard():
+            return redirect(url_for('index'))
 
-    app.register_blueprint(health_bp)
+        app.register_blueprint(colaborador_bp)
+        print("Created dummy colaborador blueprint for redirection")
+
+    # Luego intentar cargar el blueprint de director
+    try:
+        print("Attempting to import director module...")
+        from .director import director_bp, init_app as init_director
+        app.register_blueprint(director_bp)
+        init_director(app)
+        print("Director module loaded successfully")
+    except ImportError as e:
+        print(f"Warning: Could not import director module: {str(e)}")
+    except Exception as general_e:
+        print(f"Unexpected error during director blueprint registration: {str(general_e)}")
 
     # Crear usuario admin por defecto si no existe
     with app.app_context():
@@ -186,37 +239,43 @@ def create_app():
 
     # En app/__init__.py o en un archivo de setup
     with app.app_context():
-        # Índices para iniciativas
-        mongo.db.db_metadata.iniciativas.create_index([("nombre", 1)])
-        mongo.db.db_metadata.iniciativas.create_index([("codigo", 1)])
+        try:
+            # Índices para iniciativas
+            mongo.db.db_metadata.iniciativas.create_index([("nombre", 1)])
+            mongo.db.db_metadata.iniciativas.create_index([("codigo", 1)])
 
-        # Índices para historiales
-        mongo.db.assignment_history.create_index([("initiative_id", 1)])
-        mongo.db.assignment_history.create_index([("timestamp", -1)])
-        mongo.db.modification_history.create_index([("initiative_id", 1)])
-        mongo.db.modification_history.create_index([("timestamp", -1)])
+            # Índices para historiales
+            mongo.db.assignment_history.create_index([("initiative_id", 1)])
+            mongo.db.assignment_history.create_index([("timestamp", -1)])
+            mongo.db.modification_history.create_index([("initiative_id", 1)])
+            mongo.db.modification_history.create_index([("timestamp", -1)])
+        except Exception as e:
+            print(f"Warning: Could not create some indexes: {str(e)}")
 
     # Verificar si existe la colección tasks y crearla si no existe
     with app.app_context():
-        # Obtener una lista de todas las colecciones de la base de datos
-        collections = mongo.db.list_collection_names()
+        try:
+            # Obtener una lista de todas las colecciones de la base de datos
+            collections = mongo.db.list_collection_names()
 
-        # Verificar si la colección tasks existe
-        if 'tasks' not in collections:
-            # Crear la colección tasks explícitamente
-            mongo.db.create_collection('tasks')
-            print('Colección "tasks" creada exitosamente')
+            # Verificar si la colección tasks existe
+            if 'tasks' not in collections:
+                # Crear la colección tasks explícitamente
+                mongo.db.create_collection('tasks')
+                print('Colección "tasks" creada exitosamente')
 
-            # Crear índices para mejorar el rendimiento de consultas
-            mongo.db.tasks.create_index([("initiative_id", 1)])
-            mongo.db.tasks.create_index([("created_by", 1)])
-            mongo.db.tasks.create_index([("assigned_to", 1)])
-            mongo.db.tasks.create_index([("is_completed", 1)])
-            mongo.db.tasks.create_index([("created_at", -1)])
+                # Crear índices para mejorar el rendimiento de consultas
+                mongo.db.tasks.create_index([("initiative_id", 1)])
+                mongo.db.tasks.create_index([("created_by", 1)])
+                mongo.db.tasks.create_index([("assigned_to", 1)])
+                mongo.db.tasks.create_index([("is_completed", 1)])
+                mongo.db.tasks.create_index([("created_at", -1)])
 
-            print('Índices para la colección "tasks" creados exitosamente')
-        else:
-            print('La colección "tasks" ya existe')
+                print('Índices para la colección "tasks" creados exitosamente')
+            else:
+                print('La colección "tasks" ya existe')
+        except Exception as e:
+            print(f"Warning: Could not set up tasks collection: {str(e)}")
 
     @app.template_filter('format_date')
     def format_date_filter(date_value, format_string='%d/%m/%Y'):
@@ -241,8 +300,6 @@ def create_app():
             # Si hay un error, devolver el valor como string o un valor por defecto
             return str(date_value) if date_value else "-"
 
-
-
     # Registrar procesador de contexto para CSRF
     @app.context_processor
     def inject_csrf_token():
@@ -254,7 +311,6 @@ def create_app():
         def get_assigner_name(assigned_by_id):
             if assigned_by_id:
                 try:
-                    from bson.objectid import ObjectId
                     assigner = mongo.db.users.find_one({"_id": ObjectId(assigned_by_id)})
                     return assigner.get('nombre', assigner.get('email', 'Desconocido')) if assigner else 'Desconocido'
                 except Exception as e:
@@ -262,7 +318,16 @@ def create_app():
                     return 'Desconocido'
             return 'No asignado'
 
-        return dict(get_assigner_name=get_assigner_name)
+        def get_image_as_base64(file_path):
+            """Convierte una imagen a base64 para incluirla en el PDF."""
+            try:
+                with open(file_path, "rb") as image_file:
+                    return base64.b64encode(image_file.read()).decode('utf-8')
+            except Exception as e:
+                print(f"Error al convertir imagen a base64: {str(e)}")
+                return ""
+
+        return dict(get_assigner_name=get_assigner_name, get_image_as_base64=get_image_as_base64)
 
     # Ruta principal
     @app.route('/')
@@ -270,38 +335,31 @@ def create_app():
         # Si el usuario ya está autenticado, redirigir al dashboard según su rol
         from flask_login import current_user
         if current_user.is_authenticated:
-            if current_user.is_admin():
-                return redirect(url_for('admin.dashboard'))
-            elif current_user.is_director():
-                return redirect(url_for('director.dashboard'))
-            else:
-                return redirect(url_for('colaborador.dashboard'))
+            try:
+                if current_user.is_admin():
+                    return redirect(url_for('admin.dashboard'))
+                elif current_user.is_director():
+                    return redirect(url_for('director.dashboard'))
+                else:
+                    # Si colaborador.dashboard no está disponible, redireccionar a la página principal
+                    try:
+                        return redirect(url_for('colaborador.dashboard'))
+                    except:
+                        return redirect(url_for('auth.login', error='module_not_available'))
+            except Exception as e:
+                print(f"Error in routing: {str(e)}")
+                return redirect(url_for('auth.login'))
+
         # Si no está autenticado, redirigir a la página de login
         return redirect(url_for('auth.login'))
 
     # Añadir en app/__init__.py o en un archivo utils.py
-
     import base64
 
-    def get_image_as_base64(file_path):
-        """Convierte una imagen a base64 para incluirla en el PDF."""
-        try:
-            with open(file_path, "rb") as image_file:
-                return base64.b64encode(image_file.read()).decode('utf-8')
-        except Exception as e:
-            print(f"Error al convertir imagen a base64: {str(e)}")
-            return ""
-
-    # Registrar la función en Jinja2
-    @app.context_processor
-    def utility_processor():
-        return dict(get_image_as_base64=get_image_as_base64)
-
-
     # Configurar todas las colecciones requeridas
-    setup_required_collections(app, mongo)
+    try:
+        setup_required_collections(app, mongo)
+    except Exception as e:
+        print(f"Warning: Could not set up all collections: {str(e)}")
 
     return app
-
-
-

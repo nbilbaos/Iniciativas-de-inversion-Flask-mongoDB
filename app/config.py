@@ -31,7 +31,9 @@ class Config:
         # Archivos comprimidos
         'zip', 'rar', '7z', 'tar', 'gz'
     }
-    MAX_CONTENT_LENGTH = 50 * 1024 * 1024  # Límite de 50MB por archivo
+
+    MAX_CONTENT_LENGTH = 100 * 1024 * 1024  # 100MB in bytes
+
 
     # Añadir esto a la clase Config
     # Cambiado a TEMP_UPLOADS para no sobrescribir la configuración existente
