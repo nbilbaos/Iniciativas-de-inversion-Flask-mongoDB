@@ -730,7 +730,8 @@ def workbench(iniciativa_id):
         assigned_user_ids = initiative.get('assigned_users', [])
         other_collaborators = list(mongo.db.users.find({
             "_id": {"$in": [ObjectId(uid) for uid in assigned_user_ids if uid]},
-            "_id": {"$ne": ObjectId(current_user.get_id())}
+            "_id": {"$ne": ObjectId(current_user.get_id())},
+            "role": "colaborador"  # Solo mostrar usuarios con rol de colaborador
         }))
 
         # Definir estados y calcular progreso
@@ -914,7 +915,8 @@ def view_initiative_tasks(iniciativa_id):
         assigned_user_ids = iniciativa.get('assigned_users', [])
         other_collaborators = list(mongo.db.users.find({
             "_id": {"$in": [ObjectId(uid) for uid in assigned_user_ids if uid]},
-            "role": {"$in": ["colaborador", "director"]}
+            "role": "colaborador",  # Solo mostrar usuarios con rol de colaborador
+            "_id": {"$ne": ObjectId(current_user.get_id())}  # Excluir al usuario actual
         }))
 
         return render_template(
