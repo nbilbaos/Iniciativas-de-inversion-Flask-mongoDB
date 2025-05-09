@@ -38,6 +38,12 @@
         position: sticky;
         top: 20px;
     }
+
+    .task-actions {
+        display: flex;
+        gap: 5px;
+        margin-top: 10px;
+    }
 </style>
 {% endblock %}
 
@@ -106,7 +112,7 @@
                                 {% endfor %}
                             </select>
                         </div>
-                        
+
                         <div class="mb-3">
                             <label for="filterCollaborator" class="form-label">Colaborador</label>
                             <select class="form-select" id="filterCollaborator">
@@ -120,7 +126,7 @@
                                 {% endfor %}
                             </select>
                         </div>
-                        
+
                         <div class="mb-3">
                             <label class="form-label">Estado</label>
                             <div class="form-check">
@@ -142,7 +148,7 @@
                                 </label>
                             </div>
                         </div>
-                        
+
                         <div class="d-grid">
                             <button type="button" id="clearFilters" class="btn btn-secondary">
                                 <i class="fas fa-sync-alt me-2"></i>Limpiar Filtros
@@ -152,7 +158,7 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="col-md-9">
             <div class="card">
                 <div class="card-header bg-primary text-white">
@@ -178,9 +184,6 @@
                                                 <span class="badge bg-primary">{{ initiative.get('estado', 'No iniciado') }}</span>
                                             </div>
                                             <div class="mt-2">
-                                                <a href="{{ url_for('director.view_initiative_tasks', iniciativa_id=initiative_id) }}" class="btn btn-sm btn-outline-primary">
-                                                    <i class="fas fa-tasks me-1"></i> Ver todas las tareas
-                                                </a>
                                                 <a href="{{ url_for('director.view_initiative', iniciativa_id=initiative_id) }}" class="btn btn-sm btn-outline-info">
                                                     <i class="fas fa-info-circle me-1"></i> Detalles de la iniciativa
                                                 </a>
@@ -189,7 +192,8 @@
                                         <div class="card-body">
                                             <div class="tasks-list">
                                                 {% for task in initiative_tasks %}
-                                                    <div class="card task-card mb-3 {{ 'completed' if task.is_completed else '' }}" 
+                                                    <div class="card task-card mb-3 {{ 'completed' if task.is_completed else '' }}"
+                                                         id="task-{{ task._id }}"
                                                          data-task-id="{{ task._id }}"
                                                          data-collaborator-ids="{{ task.assigned_to|join(',') if task.assigned_to else '' }}"
                                                          data-status="{{ 'completed' if task.is_completed else 'pending' }}">
@@ -208,19 +212,19 @@
                                                             </div>
                                                             <div class="task-meta mt-3">
                                                                 <div>
-                                                                    <i class="fas fa-user me-1"></i> Creada por: 
+                                                                    <i class="fas fa-user me-1"></i> Creada por:
                                                                     <strong>
                                                                         {% set creator = users.get(task.created_by, {}) %}
                                                                         {{ creator.get('nombre', creator.get('email', 'Usuario desconocido')) }}
                                                                     </strong>
                                                                 </div>
                                                                 <div>
-                                                                    <i class="fas fa-calendar me-1"></i> Fecha de creación: 
+                                                                    <i class="fas fa-calendar me-1"></i> Fecha de creación:
                                                                     {{ task.created_at|format_date('%d/%m/%Y %H:%M:%S') }}
                                                                 </div>
                                                                 {% if task.is_completed and task.completed_by %}
                                                                 <div>
-                                                                    <i class="fas fa-check-circle me-1"></i> Completada por: 
+                                                                    <i class="fas fa-check-circle me-1"></i> Completada por:
                                                                     <strong>
                                                                         {% set completer = users.get(task.completed_by, {}) %}
                                                                         {{ completer.get('nombre', completer.get('email', 'Usuario desconocido')) }}
@@ -230,7 +234,7 @@
                                                                 {% endif %}
                                                                 {% if task.assigned_to %}
                                                                 <div>
-                                                                    <i class="fas fa-users me-1"></i> Asignada a: 
+                                                                    <i class="fas fa-users me-1"></i> Asignada a:
                                                                     {% for uid in task.assigned_to %}
                                                                         {% set assigned_user = users.get(uid, {}) %}
                                                                         <span class="badge bg-info">
@@ -239,6 +243,36 @@
                                                                     {% endfor %}
                                                                 </div>
                                                                 {% endif %}
+
+                                                                <!-- Botones de acción para las tareas -->
+                                                                <div class="task-actions">
+                                                                    {% if task.is_completed %}
+                                                                    <!-- Formulario para reabrir tarea -->
+                                                                    <form method="POST" action="{{ url_for('director.reopen_task', task_id=task._id) }}" class="me-1">
+                                                                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                                                        <button type="submit" class="btn btn-sm btn-warning reopen-task-btn">
+                                                                            <i class="fas fa-redo-alt"></i> Reabrir
+                                                                        </button>
+                                                                    </form>
+                                                                    {% else %}
+                                                                    <!-- Formulario para completar tarea -->
+                                                                    <form method="POST" action="{{ url_for('director.complete_task', task_id=task._id) }}" class="me-1">
+                                                                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                                                        <button type="submit" class="btn btn-sm btn-success complete-task-btn">
+                                                                            <i class="fas fa-check"></i> Completar
+                                                                        </button>
+                                                                    </form>
+                                                                    {% endif %}
+
+                                                                    <!-- Formulario para eliminar tarea -->
+                                                                    <form method="POST" action="{{ url_for('director.delete_task', task_id=task._id) }}"
+                                                                          onsubmit="return confirm('¿Estás seguro de eliminar esta tarea?');">
+                                                                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                                                        <button type="submit" class="btn btn-sm btn-danger delete-task-btn">
+                                                                            <i class="fas fa-trash"></i> Eliminar
+                                                                        </button>
+                                                                    </form>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -250,7 +284,7 @@
                             {% endif %}
                         {% endfor %}
                     </div>
-                    
+
                     <!-- Mensaje cuando no hay tareas -->
                     <div id="noTasksMessage" class="alert alert-info" style="display: none;">
                         <i class="fas fa-info-circle me-2"></i> No se encontraron tareas con los filtros seleccionados.
@@ -265,6 +299,9 @@
 {% block extra_js %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Depuración - verificar elementos
+        console.log("Script cargado");
+
         // Elementos del formulario de filtro
         const filterInitiative = document.getElementById('filterInitiative');
         const filterCollaborator = document.getElementById('filterCollaborator');
@@ -272,46 +309,46 @@
         const filterStatusPending = document.getElementById('statusPending');
         const filterStatusCompleted = document.getElementById('statusCompleted');
         const clearFiltersBtn = document.getElementById('clearFilters');
-        
+
         // Contenedor de tareas y mensaje de no resultados
         const tasksContainer = document.getElementById('tasksContainer');
         const noTasksMessage = document.getElementById('noTasksMessage');
-        
+
         // Función para aplicar filtros
         function applyFilters() {
             const selectedInitiative = filterInitiative.value;
             const selectedCollaborator = filterCollaborator.value;
             const selectedStatus = document.querySelector('input[name="taskStatus"]:checked').value;
-            
+
             // Obtener todos los grupos de iniciativas
             const initiativeGroups = document.querySelectorAll('.initiative-group');
             let visibleTasks = 0;
             let visibleGroups = 0;
-            
+
             // Iterar por cada grupo de iniciativas
             initiativeGroups.forEach(group => {
                 const initiativeId = group.getAttribute('data-initiative-id');
                 const tasks = group.querySelectorAll('.task-card');
-                
+
                 // Verificar si este grupo de iniciativas debe mostrarse
                 const showInitiative = !selectedInitiative || initiativeId === selectedInitiative;
-                
+
                 if (showInitiative) {
                     let visibleTasksInGroup = 0;
-                    
+
                     // Filtrar tareas dentro de este grupo
                     tasks.forEach(task => {
                         const taskStatus = task.getAttribute('data-status');
                         const collaboratorIds = task.getAttribute('data-collaborator-ids').split(',');
-                        
+
                         // Verificar si esta tarea debe mostrarse
-                        const showStatus = selectedStatus === 'all' || 
+                        const showStatus = selectedStatus === 'all' ||
                                           (selectedStatus === 'pending' && taskStatus === 'pending') ||
                                           (selectedStatus === 'completed' && taskStatus === 'completed');
-                                          
-                        const showCollaborator = !selectedCollaborator || 
+
+                        const showCollaborator = !selectedCollaborator ||
                                                 collaboratorIds.includes(selectedCollaborator);
-                        
+
                         if (showStatus && showCollaborator) {
                             task.style.display = '';
                             visibleTasks++;
@@ -320,7 +357,7 @@
                             task.style.display = 'none';
                         }
                     });
-                    
+
                     // Mostrar/ocultar el grupo según si tiene tareas visibles
                     if (visibleTasksInGroup > 0) {
                         group.style.display = '';
@@ -328,13 +365,13 @@
                     } else {
                         group.style.display = 'none';
                     }
-                    
+
                 } else {
                     // Ocultar
                     group.style.display = 'none';
                 }
             });
-            
+
             // Mostrar mensaje si no hay tareas visibles
             if (visibleTasks === 0) {
                 noTasksMessage.style.display = 'block';
@@ -342,14 +379,14 @@
                 noTasksMessage.style.display = 'none';
             }
         }
-        
+
         // Asociar eventos a los controles de filtro
         filterInitiative.addEventListener('change', applyFilters);
         filterCollaborator.addEventListener('change', applyFilters);
         filterStatusAll.addEventListener('change', applyFilters);
         filterStatusPending.addEventListener('change', applyFilters);
         filterStatusCompleted.addEventListener('change', applyFilters);
-        
+
         // Botón para limpiar filtros
         clearFiltersBtn.addEventListener('click', function() {
             filterInitiative.value = '';
@@ -357,7 +394,7 @@
             filterStatusAll.checked = true;
             applyFilters();
         });
-        
+
         // Aplicar filtros al cargar la página
         applyFilters();
     });

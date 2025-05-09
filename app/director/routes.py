@@ -1102,7 +1102,8 @@ def complete_task(task_id):
         task_data = mongo.db.tasks.find_one({"_id": ObjectId(task_id)})
 
         if not task_data:
-            return jsonify({"success": False, "message": "Tarea no encontrada"})
+            flash('Tarea no encontrada', 'danger')
+            return redirect(request.referrer or url_for('director.all_collaborator_tasks'))
 
         # Crear objeto Task y marcar como completada
         task = Task.from_dict(task_data)
@@ -1118,19 +1119,15 @@ def complete_task(task_id):
             }}
         )
 
-        return jsonify({
-            "success": True,
-            "message": "Tarea completada",
-            "completed_by": current_user.email,
-            "completed_at": task.completed_at.strftime('%d/%m/%Y %H:%M')
-        })
+        flash('Tarea completada correctamente', 'success')
+
+        # Redireccionar a la página anterior o a la lista de tareas
+        return redirect(request.referrer or url_for('director.all_collaborator_tasks'))
     except Exception as e:
-        import traceback
-        print(f"Error al completar tarea: {traceback.format_exc()}")
-        return jsonify({"success": False, "message": f"Error: {str(e)}"})
+        flash(f'Error al completar la tarea: {str(e)}', 'danger')
+        return redirect(request.referrer or url_for('director.all_collaborator_tasks'))
 
 
-# Ruta para reabrir una tarea
 @director_bp.route('/tareas/<task_id>/reabrir', methods=['POST'])
 @login_required
 @director_required
@@ -1141,7 +1138,8 @@ def reopen_task(task_id):
         task_data = mongo.db.tasks.find_one({"_id": ObjectId(task_id)})
 
         if not task_data:
-            return jsonify({"success": False, "message": "Tarea no encontrada"})
+            flash('Tarea no encontrada', 'danger')
+            return redirect(request.referrer or url_for('director.all_collaborator_tasks'))
 
         # Crear objeto Task y reabrir
         task = Task.from_dict(task_data)
@@ -1157,15 +1155,13 @@ def reopen_task(task_id):
             }}
         )
 
-        return jsonify({
-            "success": True,
-            "message": "Tarea reabierta"
-        })
+        flash('Tarea reabierta correctamente', 'success')
+        return redirect(request.referrer or url_for('director.all_collaborator_tasks'))
     except Exception as e:
-        return jsonify({"success": False, "message": f"Error: {str(e)}"})
+        flash(f'Error al reabrir la tarea: {str(e)}', 'danger')
+        return redirect(request.referrer or url_for('director.all_collaborator_tasks'))
 
 
-# Ruta para eliminar una tarea
 @director_bp.route('/tareas/<task_id>/eliminar', methods=['POST'])
 @login_required
 @director_required
@@ -1176,20 +1172,17 @@ def delete_task(task_id):
         task_data = mongo.db.tasks.find_one({"_id": ObjectId(task_id)})
 
         if not task_data:
-            return jsonify({"success": False, "message": "Tarea no encontrada"})
+            flash('Tarea no encontrada', 'danger')
+            return redirect(request.referrer or url_for('director.all_collaborator_tasks'))
 
         # Eliminar la tarea
         mongo.db.tasks.delete_one({"_id": ObjectId(task_id)})
 
-        return jsonify({
-            "success": True,
-            "message": "Tarea eliminada correctamente"
-        })
+        flash('Tarea eliminada correctamente', 'success')
+        return redirect(request.referrer or url_for('director.all_collaborator_tasks'))
     except Exception as e:
-        import traceback
-        print(f"Error al eliminar tarea: {traceback.format_exc()}")
-        return jsonify({"success": False, "message": f"Error: {str(e)}"})
-
+        flash(f'Error al eliminar la tarea: {str(e)}', 'danger')
+        return redirect(request.referrer or url_for('director.all_collaborator_tasks'))
 
 @director_bp.route('/all-tasks')
 @login_required

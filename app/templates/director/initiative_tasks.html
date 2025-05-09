@@ -352,20 +352,109 @@
             counterEl.classList.toggle('text-danger', words > 200);
         });
 
-        // Eventos de botones
-        document.querySelectorAll('.complete-task-btn').forEach(btn =>
-            btn.addEventListener('click', () => completeTask(btn.dataset.taskId))
-        );
-        document.querySelectorAll('.reopen-task-btn').forEach(btn =>
-            btn.addEventListener('click', () => reopenTask(btn.dataset.taskId))
-        );
-        document.querySelectorAll('.delete-task-btn').forEach(btn =>
-            btn.addEventListener('click', () => {
-                if (confirm('¿Estás seguro de que deseas eliminar esta tarea?')) {
-                    deleteTask(btn.dataset.taskId);
+        // Manejar completar tareas
+        document.querySelectorAll('.complete-task-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const taskId = this.getAttribute('data-task-id');
+                completeTask(taskId);
+            });
+        });
+
+        // Manejar reabrir tareas
+        document.querySelectorAll('.reopen-task-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const taskId = this.getAttribute('data-task-id');
+                reopenTask(taskId);
+            });
+        });
+
+        // Manejar eliminar tareas
+        document.querySelectorAll('.delete-task-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const taskId = this.getAttribute('data-task-id');
+                if (confirm('¿Estás seguro de que deseas eliminar esta tarea? Esta acción no se puede deshacer.')) {
+                    deleteTask(taskId);
+                }
+            });
+        });
+
+        // Función para completar tarea
+        function completeTask(taskId) {
+            fetch(`/director/tareas/${taskId}/completar`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
                 }
             })
-        );
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Tarea marcada como completada');
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Ha ocurrido un error al completar la tarea');
+            });
+        }
+
+        // Función para reabrir tarea
+        function reopenTask(taskId) {
+            fetch(`/director/tareas/${taskId}/reabrir`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Tarea reabierta correctamente');
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Ha ocurrido un error al reabrir la tarea');
+            });
+        }
+
+        // Función para eliminar tarea
+        function deleteTask(taskId) {
+            fetch(`/director/tareas/${taskId}/eliminar`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Tarea eliminada correctamente');
+                    // Eliminar el elemento del DOM o recargar la página
+                    const taskElement = document.getElementById(`task-${taskId}`);
+                    if (taskElement) {
+                        taskElement.remove();
+                    } else {
+                        location.reload();
+                    }
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Ha ocurrido un error al eliminar la tarea');
+            });
+        }
     });
 </script>
 {% endblock %}
