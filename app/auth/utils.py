@@ -46,6 +46,48 @@ def role_required(roles):
 
     return decorator
 
+def is_initiative_coordinator(user_data, initiative_id):
+    """
+    Verifica si un usuario es coordinador de una iniciativa específica.
+
+    Args:
+        user_data (dict): Los datos del usuario de la base de datos
+        initiative_id (str): El ID de la iniciativa a verificar
+
+    Returns:
+        bool: True si el usuario es coordinador, False en caso contrario
+    """
+    if not user_data or 'iniciativas' not in user_data:
+        return False
+
+    for iniciativa in user_data.get('iniciativas', []):
+        if (iniciativa.get('initiative_id') == initiative_id and
+                iniciativa.get('active', True) and
+                iniciativa.get('role') == 'coordinator'):
+            return True
+
+    return False
+
+
+def get_user_initiative_role(user_data, initiative_id):
+    """
+    Obtiene el rol de un usuario en una iniciativa específica.
+
+    Args:
+        user_data (dict): Los datos del usuario de la base de datos
+        initiative_id (str): El ID de la iniciativa a verificar
+
+    Returns:
+        str: 'coordinator', 'collaborator' o None si no tiene asignación activa
+    """
+    if not user_data or 'iniciativas' not in user_data:
+        return None
+
+    for iniciativa in user_data.get('iniciativas', []):
+        if iniciativa.get('initiative_id') == initiative_id and iniciativa.get('active', True):
+            return iniciativa.get('role')
+
+    return None
 
 def validate_password_strength(password):
     """

@@ -402,9 +402,6 @@ def list_initiatives():
         flash(f'Error al cargar iniciativas: {e}', 'danger')
         return redirect(url_for('director.dashboard'))
 
-
-
-
 @director_bp.route('/iniciativas/<iniciativa_id>')
 @login_required
 @director_required
@@ -427,11 +424,26 @@ def view_initiative(iniciativa_id):
             "active": True,
             "_id": {"$ne": ObjectId(current_user.get_id())}  # Excluir usuario actual si es necesario
         }))
-
+        # Al obtener usuarios asignados, también obtener información de roles
         assigned = iniciativa.get('assigned_users') or []
-        assigned_users = list(mongo.db.users.find({
-            "_id": {"$in": [ObjectId(u) for u in assigned if u]}
-        })) if assigned else []
+
+        # Obtener información completa de los usuarios asignados
+        assigned_users = []
+        if assigned:
+            for u in mongo.db.users.find({"_id": {"$in": [ObjectId(u) for u in assigned if u]}}):
+                # Buscar el rol del usuario en esta iniciativa
+                role = 'collaborator'  # Valor predeterminado
+                for asig in mongo.db.assignment_history.find({
+                    "initiative_id": iniciativa_id,
+                    "user_id": str(u["_id"])
+                }).sort("timestamp", -1).limit(1):
+                    if "role" in asig:
+                        role = asig["role"]
+                        break
+
+                # Añadir el rol al objeto usuario
+                u["role"] = role
+                assigned_users.append(u)
 
         history = list(mongo.db.assignment_history.find(
             {"initiative_id": iniciativa_id}
@@ -572,6 +584,8 @@ def assign_users(iniciativa_id):
 
         # Obtener IDs de usuarios seleccionados
         selected_users = request.form.getlist('user_ids')
+        # Obtener IDs de coordinadores seleccionados (nuevo)
+        coordinator_ids = request.form.getlist('coordinator_ids')
 
         if not selected_users:
             flash('No se seleccionó ningún usuario para asignar', 'warning')
@@ -594,6 +608,9 @@ def assign_users(iniciativa_id):
         for user_id in selected_users:
             user = mongo.db.users.find_one({"_id": ObjectId(user_id)})
             if user:
+                # Determinar si el usuario es coordinador o colaborador regular
+                role = "coordinator" if user_id in coordinator_ids else "collaborator"
+
                 history_entry = {
                     "initiative_id": iniciativa_id,
                     "initiative_name": iniciativa.get('nombre', 'Sin nombre'),
@@ -602,7 +619,8 @@ def assign_users(iniciativa_id):
                     "user_email": user.get('email', 'Desconocido'),
                     "assigned_by": current_user.get_id(),
                     "assigned_by_email": current_user.email,
-                    "timestamp": datetime.utcnow()
+                    "timestamp": datetime.utcnow(),
+                    "role": role  # Añadir el rol de asignación
                 }
                 mongo.db.assignment_history.insert_one(history_entry)
 
@@ -615,7 +633,8 @@ def assign_users(iniciativa_id):
                             "nombre": iniciativa.get('nombre', 'Sin nombre'),
                             "assigned_by": current_user.get_id(),
                             "assigned_at": datetime.utcnow(),
-                            "active": True
+                            "active": True,
+                            "role": role  # Añadir el rol de asignación
                         }
                     }}
                 )
@@ -629,7 +648,6 @@ def assign_users(iniciativa_id):
     except Exception as e:
         flash(f'Error al asignar usuarios: {str(e)}', 'danger')
         return redirect(url_for('director.view_initiative', iniciativa_id=iniciativa_id))
-
 
 @director_bp.route('/iniciativas/<iniciativa_id>/unassign/<user_id>', methods=['POST'])
 @login_required

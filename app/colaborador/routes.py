@@ -5,7 +5,7 @@ from datetime import datetime
 from bson.objectid import ObjectId
 from werkzeug.utils import secure_filename
 from . import colaborador_bp
-from ..auth.utils import role_required
+from ..auth.utils import role_required, is_initiative_coordinator, get_user_initiative_role
 from .. import mongo
 from flask import jsonify
 from ..models.task import Task
@@ -412,10 +412,14 @@ def my_initiatives():
         # Obtener IDs de iniciativas asignadas
         assigned_initiatives = user.get('iniciativas', [])
         active_initiative_ids = []
+        initiatives_roles = {}  # Diccionario para almacenar roles
 
         for iniciativa in assigned_initiatives:
             if iniciativa.get('active', True):
-                active_initiative_ids.append(ObjectId(iniciativa.get('initiative_id')))
+                initiative_id = iniciativa.get('initiative_id')
+                active_initiative_ids.append(ObjectId(initiative_id))
+                # Guardar el rol para esta iniciativa
+                initiatives_roles[initiative_id] = iniciativa.get('role', 'collaborator')
 
         # Obtener detalles de las iniciativas desde la colección
         collection_name = current_app.config['INITIATIVES_COLLECTION']
@@ -433,6 +437,7 @@ def my_initiatives():
         initiatives_with_collaborators = []
         for initiative in initiatives:
             # Buscar todos los usuarios asignados a esta iniciativa
+            initiative_id_str = str(initiative['_id'])
             assigned_user_ids = initiative.get('assigned_users', [])
             other_collaborators = []
 
@@ -454,7 +459,8 @@ def my_initiatives():
                 'iniciativa': initiative,
                 'otros_colaboradores': other_collaborators,
                 'fecha_asignacion': assignment_info.get('assigned_at') if assignment_info else None,
-                'asignado_por': assignment_info.get('assigned_by') if assignment_info else None
+                'asignado_por': assignment_info.get('assigned_by') if assignment_info else None,
+                'role': initiatives_roles.get(initiative_id_str, 'collaborator')  # Añadir el rol
             })
 
         return render_template(
@@ -464,7 +470,6 @@ def my_initiatives():
     except Exception as e:
         flash(f'Error al cargar iniciativas: {e}', 'danger')
         return redirect(url_for('colaborador.dashboard'))
-
 
 @colaborador_bp.route('/iniciativas/<iniciativa_id>')
 @login_required
@@ -676,11 +681,16 @@ def workbench(iniciativa_id):
             flash('Usuario no encontrado', 'danger')
             return redirect(url_for('colaborador.dashboard'))
 
-        # Verificar si la iniciativa está asignada al usuario
-        has_access = False
+        # Verificar si es coordinador usando la función de utilidad
+        is_coordinator = is_initiative_coordinator(user, iniciativa_id)
+        user_role = get_user_initiative_role(user, iniciativa_id)
+
         for iniciativa in user.get('iniciativas', []):
             if iniciativa.get('initiative_id') == iniciativa_id and iniciativa.get('active', True):
                 has_access = True
+                # Verificar si es coordinador
+                if iniciativa.get('role') == 'coordinator':
+                    is_coordinator = True
                 break
 
         if not has_access:
@@ -758,9 +768,12 @@ def workbench(iniciativa_id):
             progreso=progreso,
             tasks=tasks,
             users=users,
-            files=files,  # NUEVO
-            files_enabled=initiative.get('files_enabled', False)  # NUEVO
+            files=files,
+            files_enabled=initiative.get('files_enabled', False),
+            is_coordinator=is_coordinator,
+            user_role=user_role  # Pasar también el rol
         )
+
     except Exception as e:
         import traceback
         print(f"Error en workbench: {traceback.format_exc()}")
@@ -945,20 +958,30 @@ def create_task(iniciativa_id):
     try:
         # Verificar que el colaborador tiene acceso a esta iniciativa
         user = mongo.db.users.find_one({"_id": ObjectId(current_user.get_id())})
-        if not user:
-            flash('Usuario no encontrado', 'danger')
-            return redirect(url_for('colaborador.dashboard'))
+        # Verificar permisos usando la función de utilidad
+        if not is_initiative_coordinator(user, iniciativa_id):
+            flash('Solo los coordinadores pueden crear tareas', 'danger')
+            return redirect(url_for('colaborador.view_initiative_tasks', iniciativa_id=iniciativa_id))
 
-        # Verificar si la iniciativa está asignada al usuario
-        has_access = False
+        # Verificar si es coordinador usando la función de utilidad
+        is_coordinator = is_initiative_coordinator(user, iniciativa_id)
+        user_role = get_user_initiative_role(user, iniciativa_id)
+
         for iniciativa in user.get('iniciativas', []):
             if iniciativa.get('initiative_id') == iniciativa_id and iniciativa.get('active', True):
                 has_access = True
+                if iniciativa.get('role') == 'coordinator':
+                    is_coordinator = True
                 break
 
         if not has_access:
             flash('No tienes acceso a esta iniciativa', 'danger')
             return redirect(url_for('colaborador.my_initiatives'))
+
+        # Verificar si el usuario es coordinador
+        if not is_coordinator:
+            flash('Solo los coordinadores pueden crear tareas', 'danger')
+            return redirect(url_for('colaborador.view_initiative_tasks', iniciativa_id=iniciativa_id))
 
         # Obtener datos del formulario
         content = request.form.get('content', '').strip()
@@ -988,6 +1011,7 @@ def create_task(iniciativa_id):
 
         flash('Tarea creada correctamente', 'success')
         return redirect(url_for('colaborador.view_initiative_tasks', iniciativa_id=iniciativa_id))
+
     except Exception as e:
         import traceback
         print(f"Error al crear tarea: {traceback.format_exc()}")

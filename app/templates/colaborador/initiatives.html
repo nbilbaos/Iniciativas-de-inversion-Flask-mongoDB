@@ -17,11 +17,18 @@
         <div class="col-md-6 col-lg-4 mb-4">
             <div class="card h-100 shadow-sm">
                 <div class="card-header bg-primary text-white">
-                    <h5 class="card-title mb-0">
-                        {{ item.iniciativa.nombre_iniciativa if 'nombre_iniciativa' in item.iniciativa else 'Sin nombre' }}
-                    </h5>
-                    {% if 'cod' in item.iniciativa %}
-                    <small>Código: {{ item.iniciativa.cod }}</small>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">
+                            {{ item.iniciativa.nombre_iniciativa if 'nombre_iniciativa' in item.iniciativa else item.iniciativa.nombre if 'nombre' in item.iniciativa else 'Sin nombre' }}
+                        </h5>
+
+                        <!-- Mostrar badge de coordinador -->
+                        {% if item.role == 'coordinator' %}
+                        <span class="badge bg-warning">Coordinador</span>
+                        {% endif %}
+                    </div>
+                    {% if 'cod' in item.iniciativa or 'codigo' in item.iniciativa %}
+                    <small>Código: {{ item.iniciativa.cod if 'cod' in item.iniciativa else item.iniciativa.codigo }}</small>
                     {% endif %}
                 </div>
                 <div class="card-body">
@@ -40,6 +47,12 @@
                         {% endif %}
                     </p>
 
+                    {% if item.role == 'coordinator' %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-crown me-1"></i> Como coordinador, puedes crear tareas y gestionar esta iniciativa.
+                    </div>
+                    {% endif %}
+
                     {% if item.fecha_asignacion %}
                     <p class="card-text">
                         <strong>Asignado el:</strong>
@@ -48,16 +61,28 @@
                     {% endif %}
 
                     <p class="card-text">
-                        <strong>Otros colaboradores:</strong>
+                        <strong>Equipo:</strong>
                         {% if item.otros_colaboradores %}
                             <ul class="list-unstyled mt-2">
                             {% for colaborador in item.otros_colaboradores %}
                                 <li>
                                     <i class="fas fa-user me-1"></i>
                                     {{ colaborador.nombre if 'nombre' in colaborador else colaborador.email }}
-                                    {% if colaborador.role == 'director' %}
-                                        <span class="badge bg-warning">Director</span>
-                                    {% endif %}
+
+                                    <!-- Determinar rol del colaborador -->
+                                    {% set colaborador_rol = 'Colaborador' %}
+                                    {% set badge_color = 'bg-info' %}
+
+                                    {% for iniciativa in colaborador.iniciativas %}
+                                        {% if iniciativa.initiative_id == item.iniciativa._id|string and iniciativa.active == true %}
+                                            {% if iniciativa.role == 'coordinator' %}
+                                                {% set colaborador_rol = 'Coordinador' %}
+                                                {% set badge_color = 'bg-warning' %}
+                                            {% endif %}
+                                        {% endif %}
+                                    {% endfor %}
+
+                                    <span class="badge {{ badge_color }}">{{ colaborador_rol }}</span>
                                 </li>
                             {% endfor %}
                             </ul>
@@ -67,10 +92,16 @@
                     </p>
                 </div>
                 <div class="card-footer bg-transparent">
-                    <a href="{{ url_for('colaborador.edit_initiative', iniciativa_id=item.iniciativa._id) }}"
-                       class="btn btn-info btn-sm">
-                        <i class="fas fa-edit me-1"></i> Editar
-                    </a>
+                    <div class="d-flex">
+                        <a href="{{ url_for('colaborador.workbench', iniciativa_id=item.iniciativa._id) }}"
+                          class="btn btn-primary btn-sm me-2">
+                            <i class="fas fa-tools me-1"></i> Área de Trabajo
+                        </a>
+                        <a href="{{ url_for('colaborador.edit_initiative', iniciativa_id=item.iniciativa._id) }}"
+                          class="btn btn-info btn-sm">
+                            <i class="fas fa-edit me-1"></i> Editar
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
