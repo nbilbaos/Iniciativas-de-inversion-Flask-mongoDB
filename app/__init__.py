@@ -1,4 +1,4 @@
-from flask import Flask, redirect, url_for, jsonify
+from flask import Flask, redirect, url_for, jsonify, request
 from flask_pymongo import PyMongo
 from flask_login import LoginManager
 from flask_wtf.csrf import CSRFProtect, generate_csrf
@@ -69,6 +69,30 @@ def create_app():
     from .config import get_config
     app.config.from_object(get_config())
 
+    # Definir dominios permitidos
+    app.config['ALLOWED_DOMAINS'] = [
+        'iniciativas.cl',
+        'www.iniciativas.cl',
+        'flask-mongodb-env3.eba-2xc3jqqa.us-east-1.elasticbeanstalk.com',
+        '172.31.84.40',
+        '127.0.0.1:5001',
+        'localhost:5001'
+    ]
+
+    # Handler para manejar múltiples dominios
+    @app.before_request
+    def handle_domains_and_health():
+        # Siempre permitir el health check
+        if request.path == '/health':
+            return 'OK', 200
+
+        # Si está en producción, se podría implementar redirección al dominio principal
+        # (comentado por ahora para mantener comportamiento actual)
+        # if app.env == 'production' and request.host not in ['iniciativas.cl', 'www.iniciativas.cl']:
+        #     if request.host in app.config['ALLOWED_DOMAINS']:
+        #         url = request.url.replace(request.host, 'iniciativas.cl')
+        #         return redirect(url, code=301)
+
     # Create upload directories explicitly with proper error handling
     try:
         upload_dir = app.config.get('UPLOAD_FOLDER')
@@ -95,17 +119,19 @@ def create_app():
         print("Will rely on .platform/hooks for directory creation")
         # Continue anyway, the .ebextensions will handle this
 
-    # Configuración adicional para sesiones y CSRF
+    # Configuración mejorada para sesiones y CSRF
     app.config['SESSION_TYPE'] = 'filesystem'
-    app.config['SESSION_PERMANENT'] = False
+    app.config['SESSION_PERMANENT'] = True  # Cambiar a True para usar PERMANENT_SESSION_LIFETIME
     app.config['SESSION_USE_SIGNER'] = True
-    app.config['SESSION_COOKIE_SECURE'] = False  # Cambiar a True en producción
+    app.config['SESSION_COOKIE_SECURE'] = False  # Dejar en False para HTTP (cambiar a True cuando tengas HTTPS)
     app.config['SESSION_COOKIE_HTTPONLY'] = True
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-    app.config['PERMANENT_SESSION_LIFETIME'] = 1800  # 30 minutos
+    # Accept requests from any host
+    app.config['SERVER_NAME'] = None
+    app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 horas para producción
     app.config['WTF_CSRF_ENABLED'] = True
-    app.config['WTF_CSRF_TIME_LIMIT'] = 3600  # 1 hora
-    app.config['WTF_CSRF_SSL_STRICT'] = False  # Cambiar a True en producción
+    app.config['WTF_CSRF_TIME_LIMIT'] = 86400  # 24 horas para tokens CSRF
+    app.config['WTF_CSRF_SSL_STRICT'] = False  # Para entorno sin HTTPS
 
     # Inicializar extensiones
     mongo.init_app(app)
@@ -170,10 +196,21 @@ def create_app():
             'python_version': sys.version,
             'reportlab_available': reportlab_installed,
             'reportlab_version': reportlab_version,
-            'installed_packages': installed_packages
+            'installed_packages': installed_packages,
+            'host': request.host,
+            'app_config': {
+                'allowed_domains': app.config.get('ALLOWED_DOMAINS', []),
+                'env': app.env
+            }
         }
 
         return jsonify(status)
+
+    # Ruta de health check adicional en la raíz de la aplicación
+    @app.route('/health', methods=['GET'])
+    def health_check():
+        """Endpoint para health checks de Elastic Beanstalk."""
+        return 'OK', 200
 
     # Register health blueprint first - most important for EB health checks
     app.register_blueprint(health_bp)
@@ -321,6 +358,7 @@ def create_app():
         def get_image_as_base64(file_path):
             """Convierte una imagen a base64 para incluirla en el PDF."""
             try:
+                import base64
                 with open(file_path, "rb") as image_file:
                     return base64.b64encode(image_file.read()).decode('utf-8')
             except Exception as e:
@@ -352,9 +390,6 @@ def create_app():
 
         # Si no está autenticado, redirigir a la página de login
         return redirect(url_for('auth.login'))
-
-    # Añadir en app/__init__.py o en un archivo utils.py
-    import base64
 
     # Configurar todas las colecciones requeridas
     try:

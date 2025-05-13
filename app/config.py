@@ -77,6 +77,16 @@ class ProductionConfig(Config):
     MONGO_CONNECT_TIMEOUT_MS = 30000
     MONGO_SERVER_SELECTION_TIMEOUT_MS = 30000
 
+    ALLOWED_HOSTS = ['iniciativas.cl',
+                     'www.iniciativas.cl',
+                     'flask-mongodb-env3.eba-2xc3jqqa.us-east-1.elasticbeanstalk.com',
+                     '172.31.84.40']  # IPs internas de EB
+
+    # Si implementas HTTPS (recomendado)
+    PREFERRED_URL_SCHEME = 'https'
+    SESSION_COOKIE_SECURE = True
+    REMEMBER_COOKIE_SECURE = True
+
 
 # Configuración según el entorno
 config_by_name = {
