@@ -11,7 +11,6 @@ class Config:
     MONGO_URI = os.getenv('MONGO_URI')
     JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY')
 
-    # Configuración para archivos
 
     # In config.py
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

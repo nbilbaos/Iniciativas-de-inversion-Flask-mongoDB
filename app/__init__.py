@@ -63,7 +63,7 @@ def setup_required_collections(app, mongo):
 def create_app():
     """Función de fábrica para crear la aplicación Flask."""
     # Inicializar la aplicación Flask
-    app = Flask(__name__, static_folder='static', static_url_path='/static')
+    app = Flask(__name__)
     app.config['INITIATIVES_COLLECTION'] = 'db_metadata.iniciativas_2025'
     # Cargar configuración
     from .config import get_config
