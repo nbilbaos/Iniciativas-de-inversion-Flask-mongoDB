@@ -123,7 +123,7 @@ def create_app():
     app.config['SESSION_TYPE'] = 'filesystem'
     app.config['SESSION_PERMANENT'] = True  # Cambiar a True para usar PERMANENT_SESSION_LIFETIME
     app.config['SESSION_USE_SIGNER'] = True
-    app.config['SESSION_COOKIE_SECURE'] = False  # Dejar en False para HTTP (cambiar a True cuando tengas HTTPS)
+    app.config['SESSION_COOKIE_SECURE'] = False  # Bien para desarrollo local
     app.config['SESSION_COOKIE_HTTPONLY'] = True
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
     # Accept requests from any host
@@ -132,6 +132,10 @@ def create_app():
     app.config['WTF_CSRF_ENABLED'] = True
     app.config['WTF_CSRF_TIME_LIMIT'] = 86400  # 24 horas para tokens CSRF
     app.config['WTF_CSRF_SSL_STRICT'] = False  # Para entorno sin HTTPS
+
+
+
+
 
     # Inicializar extensiones
     mongo.init_app(app)

@@ -3,9 +3,6 @@ from app import create_app
 
 application = create_app()  # This MUST be named "application" for Elastic Beanstalk
 
-# Set SERVER_NAME to None to accept any host header
-application.config["SERVER_NAME"] = None  # Must be named "application" for Elastic Beanstalk
-
 # Allow requests from any host
 application.config["SERVER_NAME"] = None  # OJO: debe ser 'application', NO 'app'
 
