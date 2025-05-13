@@ -1,1 +1,1 @@
-web: gunicorn run:application
+web: gunicorn --workers=3 --timeout=120 --log-file=/var/log/app.log --error-logfile=/var/log/web.stderr.log --access-logfile=/var/log/web.stdout.log run:application
