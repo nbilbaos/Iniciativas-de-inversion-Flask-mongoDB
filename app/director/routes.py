@@ -22,7 +22,6 @@ from ..models.user import User
 
 from flask import jsonify
 from ..models.task import Task
-
 from unidecode import unidecode  # Asegúrate de tener `unidecode` instalado
 
 # Agregado al inicio de la función view_stats()

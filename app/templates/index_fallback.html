@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Bienvenido al Sistema</h5>
+                </div>
+                <div class="card-body">
+                    <p>Hola, {{ current_user.nombre or current_user.email }}. Bienvenido al panel principal.</p>
+                    
+                    <div class="alert alert-info">
+                        <p>El sistema está actualmente en mantenimiento. Algunas funciones específicas para su rol pueden no estar disponibles.</p>
+                    </div>
+                    
+                    <h5 class="mt-4">Opciones disponibles:</h5>
+                    <ul class="list-group mt-3">
+                        <li class="list-group-item">
+                            <a href="{{ url_for('auth.logout') }}">Cerrar sesión</a>
+                        </li>
+                        <li class="list-group-item">
+                            <a href="{{ url_for('auth.change_password') }}">Cambiar contraseña</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

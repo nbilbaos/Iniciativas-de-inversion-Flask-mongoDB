@@ -1,4 +1,4 @@
-from flask import Flask, redirect, url_for, jsonify, request
+from flask import Flask, redirect, url_for, jsonify, request, render_template, flash
 from flask_pymongo import PyMongo
 from flask_login import LoginManager
 from flask_wtf.csrf import CSRFProtect, generate_csrf
@@ -371,8 +371,11 @@ def create_app():
         return dict(get_assigner_name=get_assigner_name, get_image_as_base64=get_image_as_base64)
 
     # Ruta principal
+    # Reemplaza la función index en app/__init__.py con esta versión mejorada
+
     @app.route('/')
     def index():
+        """Ruta principal con manejo de errores mejorado."""
         # Si el usuario ya está autenticado, redirigir al dashboard según su rol
         from flask_login import current_user
         if current_user.is_authenticated:
@@ -380,21 +383,37 @@ def create_app():
                 if current_user.is_admin():
                     return redirect(url_for('admin.dashboard'))
                 elif current_user.is_director():
-                    return redirect(url_for('director.dashboard'))
+                    # Verificar si la ruta director.dashboard existe
+                    try:
+                        return redirect(url_for('director.dashboard'))
+                    except Exception as route_error:
+                        app.logger.error(f"Error al redirigir a director.dashboard: {str(route_error)}")
+                        # Verificar si estamos en mantenimiento
+                        maintenance_mode = os.environ.get('MAINTENANCE_MODE', 'false').lower() == 'true'
+                        if maintenance_mode:
+                            flash('El sistema está en mantenimiento. Algunas funciones podrían no estar disponibles.',
+                                  'warning')
+                        else:
+                            flash('El módulo de director está temporalmente no disponible. Contacte al administrador.',
+                                  'warning')
+                        # Mostrar una página genérica
+                        return render_template('fallback/director_dashboard.html')
                 else:
-                    # Si colaborador.dashboard no está disponible, redireccionar a la página principal
+                    # Si es colaborador, intentar redirigir al dashboard de colaborador
                     try:
                         return redirect(url_for('colaborador.dashboard'))
-                    except:
-                        return redirect(url_for('auth.login', error='module_not_available'))
-            except Exception as e:
-                print(f"Error in routing: {str(e)}")
-                return redirect(url_for('auth.login'))
+                    except Exception as collab_error:
+                        app.logger.error(f"Error al redirigir a colaborador.dashboard: {str(collab_error)}")
+                        flash('El módulo de colaborador está temporalmente no disponible. Contacte al administrador.',
+                              'warning')
+                        return render_template('fallback/colaborador_dashboard.html', user=current_user)
+            except Exception as general_error:
+                app.logger.error(f"Error general en el enrutamiento: {str(general_error)}")
+                flash('Ha ocurrido un error al procesar su solicitud. Por favor, inténtelo nuevamente.', 'danger')
+                return render_template('errors/generic_error.html')
 
         # Si no está autenticado, redirigir a la página de login
         return redirect(url_for('auth.login'))
-
-    # Configurar todas las colecciones requeridas
     try:
         setup_required_collections(app, mongo)
     except Exception as e:

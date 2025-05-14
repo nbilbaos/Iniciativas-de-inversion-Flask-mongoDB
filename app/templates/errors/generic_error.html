@@ -1,0 +1,49 @@
+<!-- Crear esta plantilla en app/templates/errors/generic_error.html -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error del sistema</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body {
+            padding-top: 50px;
+            background-color: #f8f9fa;
+        }
+        .error-container {
+            max-width: 600px;
+            margin: 0 auto;
+            text-align: center;
+            padding: 30px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        .error-icon {
+            font-size: 72px;
+            color: #ffc107;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="error-container">
+            <div class="error-icon">⚠️</div>
+            <h1 class="mb-4">Error del sistema</h1>
+            <p class="lead mb-4">Ha ocurrido un error inesperado. Nuestro equipo técnico ha sido notificado.</p>
+            <div class="mt-4">
+                <div class="alert alert-info">
+                    <h5>Opciones disponibles:</h5>
+                    <ul class="list-unstyled mt-3">
+                        <li><a href="{{ url_for('index') }}" class="btn btn-outline-primary mb-2">Volver al inicio</a></li>
+                        <li><a href="{{ url_for('auth.login') }}" class="btn btn-outline-secondary mb-2">Ir a la página de login</a></li>
+                        <li><a href="{{ url_for('auth.logout') }}" class="btn btn-outline-danger">Cerrar sesión</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
