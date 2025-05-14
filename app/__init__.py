@@ -73,10 +73,9 @@ def create_app():
     app.config['ALLOWED_DOMAINS'] = [
         'iniciativas.cl',
         'www.iniciativas.cl',
-        'flask-mongodb-env3.eba-2xc3jqqa.us-east-1.elasticbeanstalk.com',
-        '172.31.84.40',
-        '127.0.0.1:5001',
-        'localhost:5001'
+        'flask-mongodb-app.onrender.com',  # Dominio de Render (ajustar según el nombre elegido)
+        '127.0.0.1:5000',
+        'localhost:5000'
     ]
 
     # Handler para manejar múltiples dominios
