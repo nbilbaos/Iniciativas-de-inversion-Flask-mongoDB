@@ -11,12 +11,11 @@ class Config:
     MONGO_URI = os.getenv('MONGO_URI')
     JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY')
 
-    # Configuración para archivos
 
     # In config.py
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     UPLOAD_FOLDER = os.path.join(BASE_DIR, 'app', 'uploads')
-    TEMP_UPLOADS = os.path.join(BASE_DIR, 'app', 'temp_uploads')
+
 
     ALLOWED_EXTENSIONS = {
         # Archivos CAD y 3D
@@ -40,7 +39,7 @@ class Config:
     TEMP_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'temp_uploads')
 
     # Configuraciones para seguridad
-    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_SECURE = False
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
     PERMANENT_SESSION_LIFETIME = 1800  # 30 minutos en segundos
@@ -68,7 +67,12 @@ class DevelopmentConfig(Config):
 class ProductionConfig(Config):
     """Configuración para producción."""
     DEBUG = False
+    # Configuración HTTPS
     SESSION_COOKIE_SECURE = True
+    REMEMBER_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    PREFERRED_URL_SCHEME = 'https'
 
     # Override MongoDB URI with environment variable if provided
     MONGO_URI = os.environ.get('MONGO_URI', Config.MONGO_URI)
@@ -76,6 +80,11 @@ class ProductionConfig(Config):
     # Set a longer request timeout for production
     MONGO_CONNECT_TIMEOUT_MS = 30000
     MONGO_SERVER_SELECTION_TIMEOUT_MS = 30000
+
+    ALLOWED_HOSTS = ['iniciativas.cl',
+                     'www.iniciativas.cl',
+                     'flask-mongodb-env3.eba-2xc3jqqa.us-east-1.elasticbeanstalk.com',
+                     '172.31.84.40']  # IPs internas de EB
 
 
 # Configuración según el entorno

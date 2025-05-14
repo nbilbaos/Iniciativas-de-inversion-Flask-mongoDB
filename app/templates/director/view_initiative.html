@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 
 {% block head %}
-  {{ super() }}
-  <meta name="csrf-token" content="{{ csrf_token }}">
+{{ super() }}
+<meta name="csrf-token" content="{{ csrf_token }}">
 {% endblock %}
 
 {% block title %}Detalle de Iniciativa{% endblock %}
@@ -10,581 +10,772 @@
 {% block content %}
 
 {% macro format_date(date_value) %}
-  {% if date_value %}
-    {% if date_value is string %}
-      {{ date_value }}
-    {% else %}
-      {{ date_value.strftime('%d/%m/%Y %H:%M:%S') }}
-    {% endif %}
-  {% else %}
-    -
-  {% endif %}
+{% if date_value %}
+{% if date_value is string %}
+{{ date_value }}
+{% else %}
+{{ date_value.strftime('%d/%m/%Y %H:%M:%S') }}
+{% endif %}
+{% else %}
+-
+{% endif %}
 {% endmacro %}
 
 <div class="container-fluid py-4">
 
-  <!-- Encabezado -->
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <h3>
-      {{ iniciativa.nombre_iniciativa or 'Iniciativa sin nombre' }}
-      {% if iniciativa.cod %}
-        <small class="text-muted">({{ iniciativa.cod }})</small>
-      {% endif %}
-    </h3>
-    <div>
-      <a href="{{ url_for('director.generate_minuta', iniciativa_id=iniciativa._id) }}" class="btn btn-info">
-        <i class="fas fa-file-alt me-2"></i> Generar Minuta
-      </a>
-      <a href="{{ url_for('director.manage_files', iniciativa_id=iniciativa._id) }}" class="btn btn-info me-2">
-        <i class="fas fa-file-alt me-2"></i> Gestionar Archivos
-      </a>
-      <a href="{{ url_for('director.edit_initiative', iniciativa_id=iniciativa._id) }}" class="btn btn-info me-2">
-        <i class="fas fa-edit me-2"></i> Editar
-      </a>
-      <a href="{{ url_for('director.dashboard') }}" class="btn btn-secondary">
-        <i class="fas fa-arrow-left me-2"></i> Volver
-      </a>
+    <!-- Encabezado -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3>
+            {{ iniciativa.nombre_iniciativa or 'Iniciativa sin nombre' }}
+            {% if iniciativa.cod %}
+            <small class="text-muted">({{ iniciativa.cod }})</small>
+            {% endif %}
+        </h3>
+        <div>
+            <a href="{{ url_for('director.generate_minuta', iniciativa_id=iniciativa._id) }}" class="btn btn-info">
+                <i class="fas fa-file-alt me-2"></i> Generar Minuta
+            </a>
+            <a href="{{ url_for('director.manage_files', iniciativa_id=iniciativa._id) }}" class="btn btn-info me-2">
+                <i class="fas fa-file-alt me-2"></i> Gestionar Archivos
+            </a>
+            <a href="{{ url_for('director.edit_initiative', iniciativa_id=iniciativa._id) }}" class="btn btn-info me-2">
+                <i class="fas fa-edit me-2"></i> Editar
+            </a>
+            <a href="{{ url_for('director.dashboard') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-2"></i> Volver
+            </a>
+        </div>
     </div>
-  </div>
 
-  {# -- Estado de la iniciativa -- #}
-  <div class="card mb-4 shadow-sm">
-    <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
-      <h5 class="mb-0"><i class="fas fa-tasks me-2"></i>Estado de la Iniciativa</h5>
-      <button class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#changeStatusModal">
-        <i class="fas fa-exchange-alt me-1"></i> Cambiar Estado
-      </button>
-    </div>
-    <div class="card-body">
-      <div class="row">
+    {# -- Estado de la iniciativa -- #}
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-tasks me-2"></i>Estado de la Iniciativa</h5>
+            <button class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#changeStatusModal">
+                <i class="fas fa-exchange-alt me-1"></i> Cambiar Estado
+            </button>
+        </div>
+        <div class="card-body">
+            <div class="row">
 
-        <!-- Estado actual -->
-        <div class="col-md-6">
-          <h6>Estado Actual:</h6>
-          <div class="d-flex align-items-center">
+                <!-- Estado actual -->
+                <div class="col-md-6">
+                    <h6>Estado Actual:</h6>
+                    <div class="d-flex align-items-center">
             <span class="badge bg-primary p-2 fs-6 me-2">
               {{ iniciativa.estado or 'No Iniciado' }}
             </span>
-            {% if iniciativa.ultimo_cambio_estado %}
-              <small class="text-muted">
-                Actualizado: {{ format_date(iniciativa.ultimo_cambio_estado) }}
-              </small>
-            {% endif %}
-          </div>
-        </div>
-
-        <!-- Progreso -->
-        <div class="col-md-6">
-          <h6>Progreso del Proyecto:</h6>
-          {% set estados = estados_validos if estados_validos is defined else
-             ['No Iniciado','Formulación','Revisión','Corrección','Elegible',
-              'Financiado','Firma Convenio','Preparación Bases','Licitación',
-              'Adjudicación','Firma Contrato','Entregado','En Ejecución','Finalizado'] %}
-          {% set idx = estados.index(iniciativa.estado) if iniciativa.estado in estados else 0 %}
-          {% set progreso = (idx / (estados|length - 1)) * 100 %}
-          <div class="progress" style="height: 25px;">
-            <div class="progress-bar bg-success"
-                 role="progressbar"
-                 style="width: {{ progreso }}%;"
-                 aria-valuenow="{{ progreso }}"
-                 aria-valuemin="0"
-                 aria-valuemax="100">
-              {{ progreso|round }}%
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-      {# -- Historial de estados -- #}
-      <div class="mt-4">
-        <h6><i class="fas fa-history me-2"></i>Historial de Estados:</h6>
-        {% if estados_historial %}
-          <div class="table-responsive">
-            <table class="table table-sm table-hover">
-              <thead class="table-light">
-                <tr>
-                  <th>Fecha</th>
-                  <th>Estado Anterior</th>
-                  <th>Nuevo Estado</th>
-                  <th>Cambiado Por</th>
-                  <th>Comentario</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for e in estados_historial %}
-                  <tr>
-                    <td>{{ format_date(e.timestamp) }}</td>
-                    <td>
-                      {% if e.estado_anterior %}
-                        <span class="badge bg-secondary">{{ e.estado_anterior }}</span>
-                      {% else %}
-                        <span class="badge bg-light text-dark">Creación</span>
-                      {% endif %}
-                    </td>
-                    <td><span class="badge bg-primary">{{ e.estado_nuevo }}</span></td>
-                    <td>{{ e.cambiado_por_email }}</td>
-                    <td>{{ e.comentario or '-' }}</td>
-                  </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-        {% else %}
-          <div class="alert alert-light">
-            <i class="fas fa-info-circle me-2"></i> No hay historial de cambios de estado disponible.
-          </div>
-        {% endif %}
-      </div>
-    </div>
-  </div>
-
-  {# -- Modal Cambiar Estado -- #}
-  <div class="modal fade" id="changeStatusModal" tabindex="-1" aria-labelledby="changeStatusModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <form action="{{ url_for('director.cambiar_estado_iniciativa', iniciativa_id=iniciativa._id) }}"
-              method="POST">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-          <div class="modal-header">
-            <h5 class="modal-title" id="changeStatusModalLabel">Cambiar Estado de la Iniciativa</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <div class="mb-3">
-              <label for="nuevo_estado" class="form-label">Seleccione el nuevo estado:</label>
-              <select id="nuevo_estado" name="nuevo_estado" class="form-select" required>
-                <option value="" disabled selected>-- Seleccionar estado --</option>
-                {% for st in estados %}
-                  <option value="{{ st }}" {% if st == iniciativa.estado %}disabled{% endif %}>{{ st }}</option>
-                {% endfor %}
-              </select>
-            </div>
-            <div class="mb-3">
-              <label for="comentario" class="form-label">Comentario (opcional):</label>
-              <textarea id="comentario" name="comentario" rows="3" class="form-control"
-                        placeholder="Ingrese un comentario sobre el cambio de estado"></textarea>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-            <button type="submit" class="btn btn-primary">Guardar Cambio</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- -----------------------Tareas----------------------------------- -->
-
-
-  <div class="card mt-4">
-    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-      <h5 class="mb-0"><i class="fas fa-tasks me-2"></i>Tareas de la Iniciativa</h5>
-      <button class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#createTaskModal">
-        <i class="fas fa-plus-circle me-1"></i> Nueva Tarea
-      </button>
-    </div>
-    <div class="card-body">
-      <ul class="nav nav-tabs" id="taskTabs" role="tablist">
-        <li class="nav-item" role="presentation">
-          <button class="nav-link active" id="pending-tab" data-bs-toggle="tab"
-                  data-bs-target="#pending-tasks" type="button" role="tab"
-                  aria-controls="pending-tasks" aria-selected="true">
-            Tareas Pendientes
-            <span class="badge bg-primary ms-2">
-              {{ tasks | selectattr('is_completed','equalto',false) | list | length if tasks else 0 }}
-            </span>
-          </button>
-        </li>
-        <li class="nav-item" role="presentation">
-          <button class="nav-link" id="completed-tab" data-bs-toggle="tab"
-                  data-bs-target="#completed-tasks" type="button" role="tab"
-                  aria-controls="completed-tasks" aria-selected="false">
-            Tareas Completadas
-            <span class="badge bg-success ms-2">
-              {{ tasks | selectattr('is_completed','equalto',true) | list | length if tasks else 0 }}
-            </span>
-          </button>
-        </li>
-      </ul>
-
-      <div class="tab-content pt-4" id="taskTabsContent">
-
-        {# Tareas Pendientes #}
-        <div class="tab-pane fade show active" id="pending-tasks" role="tabpanel" aria-labelledby="pending-tab">
-          {% set pending = tasks | selectattr('is_completed','equalto',false) | list %}
-          {% if pending %}
-            <div id="pending-tasks-container">
-              {% for task in pending %}
-                <div class="card task-card mb-3" id="task-{{ task._id }}">
-                  <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                      <div class="task-content">{{ task.content }}</div>
-                      <div class="task-actions">
-                        <button class="btn btn-sm btn-success complete-task-btn"
-                                data-task-id="{{ task._id }}">
-                          <i class="fas fa-check"></i>
-                        </button>
-                        <button class="btn btn-sm btn-danger delete-task-btn"
-                                data-task-id="{{ task._id }}">
-                          <i class="fas fa-trash"></i>
-                        </button>
-                      </div>
+                        {% if iniciativa.ultimo_cambio_estado %}
+                        <small class="text-muted">
+                            Actualizado: {{ format_date(iniciativa.ultimo_cambio_estado) }}
+                        </small>
+                        {% endif %}
                     </div>
-                    <div class="task-meta mt-3">
-                      <div>
-                        <i class="fas fa-user me-1"></i> Creada por:
-                        {% set c = users.get(task.created_by, {}) %}
-                        <strong>{{ c.nombre or c.email or 'Usuario desconocido' }}</strong>
-                      </div>
-                      <div>
-                        <i class="fas fa-calendar me-1"></i> Fecha:
-                        {{ format_date(task.created_at) }}
-                      </div>
-                      {% if task.assigned_to %}
-                        <div>
-                          <i class="fas fa-users me-1"></i> Asignada a:
-                          {% for uid in task.assigned_to %}
-                            {% set u = users.get(uid, {}) %}
-                            <span class="badge bg-info">{{ u.nombre or u.email or 'Usuario desconocido' }}</span>
-                          {% endfor %}
-                        </div>
-                      {% endif %}
-                    </div>
-                  </div>
                 </div>
-              {% endfor %}
-            </div>
-          {% else %}
-            <div class="alert alert-info">
-              <i class="fas fa-info-circle me-2"></i> No hay tareas pendientes para esta iniciativa.
-            </div>
-          {% endif %}
-        </div>
 
-        {# Tareas Completadas #}
-        <div class="tab-pane fade" id="completed-tasks" role="tabpanel" aria-labelledby="completed-tab">
-          {% set done = tasks | selectattr('is_completed','equalto',true) | list %}
-          {% if done %}
-            <div id="completed-tasks-container">
-              {% for task in done %}
-                <div class="card task-card completed mb-3" id="task-{{ task._id }}">
-                  <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                      <div>
-                        <div class="task-content">{{ task.content }}</div>
-                        <div class="mt-2">
-                          <span class="badge bg-success"><i class="fas fa-check me-1"></i> Completada</span>
+                <!-- Progreso -->
+                <div class="col-md-6">
+                    <h6>Progreso del Proyecto:</h6>
+                    {% set estados = estados_validos if estados_validos is defined else
+                    ['No Iniciado','Formulación','Revisión','Corrección','Elegible',
+                    'Financiado','Firma Convenio','Preparación Bases','Licitación',
+                    'Adjudicación','Firma Contrato','Entregado','En Ejecución','Finalizado'] %}
+                    {% set idx = estados.index(iniciativa.estado) if iniciativa.estado in estados else 0 %}
+                    {% set progreso = (idx / (estados|length - 1)) * 100 %}
+                    <div class="progress" style="height: 25px;">
+                        <div class="progress-bar bg-success"
+                             role="progressbar"
+                             style="width: {{ progreso }}%;"
+                             aria-valuenow="{{ progreso }}"
+                             aria-valuemin="0"
+                             aria-valuemax="100">
+                            {{ progreso|round }}%
                         </div>
-                      </div>
-                      <div class="task-actions">
-                        <button class="btn btn-sm btn-warning reopen-task-btn"
-                                data-task-id="{{ task._id }}">
-                          <i class="fas fa-redo-alt"></i>
-                        </button>
-                        <button class="btn btn-sm btn-danger delete-task-btn"
-                                data-task-id="{{ task._id }}">
-                          <i class="fas fa-trash"></i>
-                        </button>
-                      </div>
                     </div>
-                    <div class="task-meta mt-3">
-                      <div>
-                        <i class="fas fa-user me-1"></i> Creada por:
-                        {% set c = users.get(task.created_by, {}) %}
-                        <strong>{{ c.nombre or c.email or 'Usuario desconocido' }}</strong>
-                      </div>
-                      <div>
-                        <i class="fas fa-calendar me-1"></i> Fecha de creación:
-                        {{ format_date(task.created_at) }}
-                      </div>
-                      <div>
-                        <i class="fas fa-check-circle me-1"></i> Completada por:
-                        {% set comp = users.get(task.completed_by, {}) %}
-                        <strong>{{ comp.nombre or comp.email or 'Usuario desconocido' }}</strong>
-                        el {{ format_date(task.completed_at) }}
-                      </div>
-                      {% if task.assigned_to %}
-                        <div>
-                          <i class="fas fa-users me-1"></i> Asignada a:
-                          {% for uid in task.assigned_to %}
-                            {% set u = users.get(uid, {}) %}
-                            <span class="badge bg-info">{{ u.nombre or u.email or 'Usuario desconocido' }}</span>
-                          {% endfor %}
-                        </div>
-                      {% endif %}
-                    </div>
-                  </div>
                 </div>
-              {% endfor %}
-            </div>
-          {% else %}
-            <div class="alert alert-info">
-              <i class="fas fa-info-circle me-2"></i> No hay tareas completadas para esta iniciativa.
-            </div>
-          {% endif %}
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
 
-<!-- Información General y Colaboradores-->
+            </div>
 
-<div class="container-fluid py-4">
-  <div class="row">
-    <div class="col-md-8">
-      <div class="card mb-4">
-        <div class="card-header bg-primary text-white">
-          <h5 class="mb-0">Información General</h5>
-        </div>
-        <div class="card-body">
-          <div class="row">
-            {% for key, val in iniciativa.items() if key not in ['_id','assigned_users'] %}
-              <div class="col-md-6 mb-3">
-                <strong>{{ key.replace('_',' ').capitalize() }}:</strong>
-                {% if val is string or val is number %}
-                  {{ val }}
-                {% elif val is mapping %}
-                  <pre class="small">{{ val|tojson(indent=2) }}</pre>
-                {% elif val is iterable %}
-                  <ul class="mb-0">
-                    {% for item in val %}
-                      <li>{{ item }}</li>
-                    {% endfor %}
-                  </ul>
+            {# -- Historial de estados -- #}
+            <div class="mt-4">
+                <h6><i class="fas fa-history me-2"></i>Historial de Estados:</h6>
+                {% if estados_historial %}
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead class="table-light">
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Estado Anterior</th>
+                            <th>Nuevo Estado</th>
+                            <th>Cambiado Por</th>
+                            <th>Comentario</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for e in estados_historial %}
+                        <tr>
+                            <td>{{ format_date(e.timestamp) }}</td>
+                            <td>
+                                {% if e.estado_anterior %}
+                                <span class="badge bg-secondary">{{ e.estado_anterior }}</span>
+                                {% else %}
+                                <span class="badge bg-light text-dark">Creación</span>
+                                {% endif %}
+                            </td>
+                            <td><span class="badge bg-primary">{{ e.estado_nuevo }}</span></td>
+                            <td>{{ e.cambiado_por_email }}</td>
+                            <td>{{ e.comentario or '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
                 {% else %}
-                  {{ val }}
+                <div class="alert alert-light">
+                    <i class="fas fa-info-circle me-2"></i> No hay historial de cambios de estado disponible.
+                </div>
                 {% endif %}
-              </div>
-            {% endfor %}
-          </div>
+            </div>
         </div>
-      </div>
     </div>
 
-    <!-- Colaboradores Asignados -->
-    <div class="col-md-4">
-      <div class="card mb-4">
-        <div class="card-header bg-info text-white">
-          <h5 class="card-title mb-0">Gestión de Colaboradores</h5>
-        </div>
-        <div class="card-body">
-          {% set assigned_ids = assigned_users|map(attribute='_id')|map('string')|list %}
-          <form method="POST" action="{{ url_for('director.assign_users', iniciativa_id=iniciativa._id) }}">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-
-            <div class="mb-3">
-              <label for="user_ids" class="form-label">Asignar Colaboradores:</label>
-              <select class="form-select" id="user_ids" name="user_ids" multiple required>
-                {% for colaborador in colaboradores %}
-                  <option value="{{ colaborador._id|string }}"
-                          {% if colaborador._id|string in assigned_ids %}selected{% endif %}>
-                    {{ colaborador.nombre or colaborador.email }}
-                  </option>
-                {% endfor %}
-              </select>
-              <div class="form-text">
-                Mantén presionada la tecla Ctrl (o ⌘ en Mac) para seleccionar varios usuarios.
-              </div>
-            </div>
-
-            <!-- Selección de Coordinadores -->
-            <div class="mb-3">
-              <label class="form-label">Seleccionar Coordinadores:</label>
-              <p class="text-muted">Los coordinadores pueden crear tareas y gestionar la iniciativa.</p>
-              <div id="coordinator-container" class="mt-2 border p-3 rounded">
-                <div class="alert alert-info">
-                  <i class="fas fa-info-circle me-2"></i>
-                  Selecciona usuarios para mostrar opciones de coordinador.
-                </div>
-              </div>
-            </div>
-
-            <div class="d-grid">
-              <button type="submit" class="btn btn-primary">
-                <i class="fas fa-user-plus me-2"></i> Asignar Usuarios
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-
-      <!-- Lista de usuarios asignados -->
-      <div class="card mb-4">
-        <div class="card-header bg-success text-white">
-          <h5 class="card-title mb-0">Colaboradores Asignados</h5>
-        </div>
-        <div class="card-body">
-          {% if assigned_users %}
-            <div class="list-group">
-              {% for user in assigned_users %}
-                <div class="list-group-item d-flex justify-content-between align-items-center">
-                  <div>
-                    <h6 class="mb-0">
-                      {{ user.nombre or user.email }}
-                      {% if user.role == 'coordinator' %}
-                        <span class="badge bg-warning">Coordinador</span>
-                      {% endif %}
-                    </h6>
-                    <small class="text-muted">{{ user.email }}</small>
-                  </div>
-                  <form method="POST"
-                        action="{{ url_for('director.unassign_user', iniciativa_id=iniciativa._id, user_id=user._id) }}"
-                        class="d-inline">
+    {# -- Modal Cambiar Estado -- #}
+    <div class="modal fade" id="changeStatusModal" tabindex="-1" aria-labelledby="changeStatusModalLabel"
+         aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form action="{{ url_for('director.cambiar_estado_iniciativa', iniciativa_id=iniciativa._id) }}"
+                      method="POST">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                    <button type="submit" class="btn btn-sm btn-danger"
-                            onclick="return confirm('¿Estás seguro de desasignar a este usuario?');">
-                      <i class="fas fa-user-minus"></i>
-                    </button>
-                  </form>
-                </div>
-              {% endfor %}
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="changeStatusModalLabel">Cambiar Estado de la Iniciativa</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="nuevo_estado" class="form-label">Seleccione el nuevo estado:</label>
+                            <select id="nuevo_estado" name="nuevo_estado" class="form-select" required>
+                                <option value="" disabled selected>-- Seleccionar estado --</option>
+                                {% for st in estados %}
+                                <option value="{{ st }}" {% if st== iniciativa.estado %}disabled{% endif %}>{{ st }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="comentario" class="form-label">Comentario (opcional):</label>
+                            <textarea id="comentario" name="comentario" rows="3" class="form-control"
+                                      placeholder="Ingrese un comentario sobre el cambio de estado"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Guardar Cambio</button>
+                    </div>
+                </form>
             </div>
-          {% else %}
-            <div class="alert alert-info">
-              <i class="fas fa-info-circle me-2"></i> No hay colaboradores asignados a esta iniciativa.
-            </div>
-          {% endif %}
         </div>
-      </div>
     </div>
 
-  </div>
-  {# -- Historial de Asignaciones -- #}
-  <div class="card mb-4">
-    <div class="card-header bg-info text-white">
-      <h5 class="mb-0">Historial de Asignaciones</h5>
+    <!-- -----------------------Tareas----------------------------------- -->
+
+
+    <div class="container-fluid py-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>Tareas de la Iniciativa</h1>
+            <div>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createTaskModal">
+                    <i class="fas fa-plus-circle me-2"></i> Nueva Tarea
+                </button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    {{ iniciativa.nombre_iniciativa if iniciativa.nombre_iniciativa else 'Iniciativa sin nombre' }}
+                    {% if iniciativa.cod %}
+                    <small class="text-light">({{ iniciativa.cod }})</small>
+                    {% endif %}
+                </h5>
+            </div>
+
+            <div class="card-body">
+                <ul class="nav nav-tabs" id="taskTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="pending-tab" data-bs-toggle="tab"
+                                data-bs-target="#pending-tasks" type="button" role="tab"
+                                aria-controls="pending-tasks" aria-selected="true">
+                            Tareas Pendientes
+                            <span class="badge bg-primary ms-2">
+                            {{ tasks | selectattr('is_completed', 'equalto', false) | list | length }}
+                        </span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="completed-tab" data-bs-toggle="tab"
+                                data-bs-target="#completed-tasks" type="button" role="tab"
+                                aria-controls="completed-tasks" aria-selected="false">
+                            Tareas Completadas
+                            <span class="badge bg-success ms-2">
+                            {{ tasks | selectattr('is_completed', 'equalto', true) | list | length }}
+                        </span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="all-tab" data-bs-toggle="tab"
+                                data-bs-target="#all-tasks" type="button" role="tab"
+                                aria-controls="all-tasks" aria-selected="false">
+                            Todas las Tareas
+                            <span class="badge bg-secondary ms-2">
+                            {{ tasks | length }}
+                        </span>
+                        </button>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="tab-content pt-4" id="taskTabsContent">
+
+                <!-- TAREAS PENDIENTES -->
+                <div class="tab-pane fade show active" id="pending-tasks" role="tabpanel" aria-labelledby="pending-tab">
+                    {% if tasks | selectattr('is_completed', 'equalto', false) | list %}
+                    {% for task in tasks if not task.is_completed %}
+                    <div class="card task-card mb-3" id="task-{{ task._id }}">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="task-content">{{ task.content }}</div>
+                                <div class="task-actions">
+                                    <!-- Botón completar -->
+                                    <a href="{{ url_for('director.complete_task', task_id=task._id) }}"
+                                       class="btn btn-sm btn-success"
+                                       onclick="event.preventDefault(); document.getElementById('complete-form-{{ task._id }}').submit();">
+                                        <i class="fas fa-check"></i>
+                                    </a>
+                                    <!-- Botón eliminar -->
+                                    <a href="{{ url_for('director.delete_task', task_id=task._id) }}"
+                                       class="btn btn-sm btn-danger"
+                                       onclick="event.preventDefault(); if(confirm('¿Estás seguro de eliminar esta tarea?')) document.getElementById('delete-form-{{ task._id }}').submit();">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+
+                                    <!-- Formularios ocultos -->
+                                    <form id="complete-form-{{ task._id }}"
+                                          action="{{ url_for('director.complete_task', task_id=task._id) }}"
+                                          method="POST" style="display: none;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                    </form>
+                                    <form id="delete-form-{{ task._id }}"
+                                          action="{{ url_for('director.delete_task', task_id=task._id) }}" method="POST"
+                                          style="display: none;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                    </form>
+                                </div>
+                            </div>
+                            <div class="task-meta mt-3">
+                                <div>
+                                    <i class="fas fa-user me-1"></i> Creada por:
+                                    <strong>
+                                        {% set creator = users.get(task.created_by, {}) %}
+                                        {{ creator.nombre if creator.nombre else creator.email or 'Usuario desconocido'
+                                        }}
+                                    </strong>
+                                </div>
+                                <div>
+                                    <i class="fas fa-calendar me-1"></i> Fecha:
+                                    {{ task.created_at|format_date('%d/%m/%Y %H:%M') if task.created_at }}
+                                </div>
+                                {% if task.assigned_to %}
+                                <div>
+                                    <i class="fas fa-users me-1"></i> Asignada a:
+                                    {% for uid in task.assigned_to %}
+                                    {% set u = users.get(uid, {}) %}
+                                    <span class="badge bg-info">
+                                                    {{ u.nombre if u.nombre else u.email or 'Usuario desconocido' }}
+                                                </span>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i> No hay tareas pendientes para esta iniciativa.
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- TAREAS COMPLETADAS -->
+                <div class="tab-pane fade" id="completed-tasks" role="tabpanel" aria-labelledby="completed-tab">
+                    {% if tasks | selectattr('is_completed', 'equalto', true) | list %}
+                    {% for task in tasks if task.is_completed %}
+                    <div class="card task-card completed mb-3" id="task-{{ task._id }}">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div class="task-content">{{ task.content }}</div>
+                                    <div class="mt-2">
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-check me-1"></i> Completada
+                                            </span>
+                                    </div>
+                                </div>
+                                <div class="task-actions">
+                                    <!-- Botón reabrir -->
+                                    <a href="{{ url_for('director.reopen_task', task_id=task._id) }}"
+                                       class="btn btn-sm btn-warning"
+                                       onclick="event.preventDefault(); document.getElementById('reopen-form-{{ task._id }}').submit();">
+                                        <i class="fas fa-redo-alt"></i>
+                                    </a>
+                                    <!-- Botón eliminar -->
+                                    <a href="{{ url_for('director.delete_task', task_id=task._id) }}"
+                                       class="btn btn-sm btn-danger"
+                                       onclick="event.preventDefault(); if(confirm('¿Estás seguro de eliminar esta tarea?')) document.getElementById('delete-form-completed-{{ task._id }}').submit();">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+
+                                    <!-- Formularios ocultos -->
+                                    <form id="reopen-form-{{ task._id }}"
+                                          action="{{ url_for('director.reopen_task', task_id=task._id) }}" method="POST"
+                                          style="display: none;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                    </form>
+                                    <form id="delete-form-completed-{{ task._id }}"
+                                          action="{{ url_for('director.delete_task', task_id=task._id) }}" method="POST"
+                                          style="display: none;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                    </form>
+                                </div>
+                            </div>
+                            <div class="task-meta mt-3">
+                                <div>
+                                    <i class="fas fa-user me-1"></i> Creada por:
+                                    <strong>
+                                        {% set creator = users.get(task.created_by, {}) %}
+                                        {{ creator.nombre if creator.nombre else creator.email or 'Usuario desconocido'
+                                        }}
+                                    </strong>
+                                </div>
+                                <div>
+                                    <i class="fas fa-calendar me-1"></i> Fecha de creación:
+                                    {{ task.created_at|format_date('%d/%m/%Y %H:%M') if task.created_at }}
+                                </div>
+                                <div>
+                                    <i class="fas fa-check-circle me-1"></i> Completada por:
+                                    <strong>
+                                        {% set completer = users.get(task.completed_by, {}) %}
+                                        {{ completer.nombre if completer.nombre else completer.email or 'Usuario
+                                        desconocido' }}
+                                    </strong>
+                                    el {{ task.completed_at|format_date('%d/%m/%Y %H:%M') if task.completed_at }}
+                                </div>
+                                {% if task.assigned_to %}
+                                <div>
+                                    <i class="fas fa-users me-1"></i> Asignada a:
+                                    {% for uid in task.assigned_to %}
+                                    {% set u = users.get(uid, {}) %}
+                                    <span class="badge bg-info">
+                                                    {{ u.nombre if u.nombre else u.email or 'Usuario desconocido' }}
+                                                </span>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i> No hay tareas completadas para esta iniciativa.
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- TODAS LAS TAREAS -->
+                <div class="tab-pane fade" id="all-tasks" role="tabpanel" aria-labelledby="all-tab">
+                    {% if tasks %}
+                    {% for task in tasks %}
+                    <div class="card task-card {{ 'completed' if task.is_completed else '' }} mb-3"
+                         id="task-{{ task._id }}">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div class="task-content">{{ task.content }}</div>
+                                    {% if task.is_completed %}
+                                    <div class="mt-2">
+                                                <span class="badge bg-success">
+                                                    <i class="fas fa-check me-1"></i> Completada
+                                                </span>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <div class="task-actions">
+                                    {% if task.is_completed %}
+                                    <!-- Botón reabrir -->
+                                    <a href="{{ url_for('director.reopen_task', task_id=task._id) }}"
+                                       class="btn btn-sm btn-warning"
+                                       onclick="event.preventDefault(); document.getElementById('reopen-form-all-{{ task._id }}').submit();">
+                                        <i class="fas fa-redo-alt"></i>
+                                    </a>
+                                    {% else %}
+                                    <!-- Botón completar -->
+                                    <a href="{{ url_for('director.complete_task', task_id=task._id) }}"
+                                       class="btn btn-sm btn-success"
+                                       onclick="event.preventDefault(); document.getElementById('complete-form-all-{{ task._id }}').submit();">
+                                        <i class="fas fa-check"></i>
+                                    </a>
+                                    {% endif %}
+                                    <!-- Botón eliminar -->
+                                    <a href="{{ url_for('director.delete_task', task_id=task._id) }}"
+                                       class="btn btn-sm btn-danger"
+                                       onclick="event.preventDefault(); if(confirm('¿Estás seguro de eliminar esta tarea?')) document.getElementById('delete-form-all-{{ task._id }}').submit();">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+
+                                    <!-- Formularios ocultos -->
+                                    {% if task.is_completed %}
+                                    <form id="reopen-form-all-{{ task._id }}"
+                                          action="{{ url_for('director.reopen_task', task_id=task._id) }}" method="POST"
+                                          style="display: none;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                    </form>
+                                    {% else %}
+                                    <form id="complete-form-all-{{ task._id }}"
+                                          action="{{ url_for('director.complete_task', task_id=task._id) }}"
+                                          method="POST" style="display: none;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                    </form>
+                                    {% endif %}
+                                    <form id="delete-form-all-{{ task._id }}"
+                                          action="{{ url_for('director.delete_task', task_id=task._id) }}" method="POST"
+                                          style="display: none;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                    </form>
+                                </div>
+                            </div>
+                            <div class="task-meta mt-3">
+                                <div>
+                                    <i class="fas fa-user me-1"></i> Creada por:
+                                    <strong>
+                                        {% set creator = users.get(task.created_by, {}) %}
+                                        {{ creator.nombre if creator.nombre else creator.email or 'Usuario desconocido'
+                                        }}
+                                    </strong>
+                                </div>
+                                <div>
+                                    <i class="fas fa-calendar me-1"></i> Fecha de creación:
+                                    {{ task.created_at|format_date('%d/%m/%Y %H:%M') if task.created_at }}
+                                </div>
+                                {% if task.is_completed and task.completed_by %}
+                                <div>
+                                    <i class="fas fa-check-circle me-1"></i> Completada por:
+                                    <strong>
+                                        {% set completer = users.get(task.completed_by, {}) %}
+                                        {{ completer.nombre if completer.nombre else completer.email or 'Usuario
+                                        desconocido' }}
+                                    </strong>
+                                    el {{ task.completed_at|format_date('%d/%m/%Y %H:%M') if task.completed_at }}
+                                </div>
+                                {% endif %}
+                                {% if task.assigned_to %}
+                                <div>
+                                    <i class="fas fa-users me-1"></i> Asignada a:
+                                    {% for uid in task.assigned_to %}
+                                    {% set u = users.get(uid, {}) %}
+                                    <span class="badge bg-info">
+                                                    {{ u.nombre if u.nombre else u.email or 'Usuario desconocido' }}
+                                                </span>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i> No hay tareas para esta iniciativa.
+                    </div>
+                    {% endif %}
+                </div>
+
+            </div>
+        </div>
     </div>
-    <div class="card-body">
-      {% if assignments_history %}
-        <div class="table-responsive">
-          <table class="table table-striped table-hover">
-            <thead>
-              <tr>
-                <th>Fecha</th>
-                <th>Tipo</th>
-                <th>Usuario</th>
-                <th>Ejecutado por</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for a in assignments_history %}
-                <tr>
-                  <td>{{ a.timestamp and format_date(a.timestamp) or '-' }}</td>
-                  <td>
+
+    <!-- Información General y Colaboradores-->
+
+    <div class="container-fluid py-4">
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Información General</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            {% for key, val in iniciativa.items() if key not in ['_id','assigned_users'] %}
+                            <div class="col-md-6 mb-3">
+                                <strong>{{ key.replace('_',' ').capitalize() }}:</strong>
+                                {% if val is string or val is number %}
+                                {{ val }}
+                                {% elif val is mapping %}
+                                <pre class="small">{{ val|tojson(indent=2) }}</pre>
+                                {% elif val is iterable %}
+                                <ul class="mb-0">
+                                    {% for item in val %}
+                                    <li>{{ item }}</li>
+                                    {% endfor %}
+                                </ul>
+                                {% else %}
+                                {{ val }}
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Colaboradores Asignados -->
+            <div class="col-md-4">
+                <div class="card mb-4">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="card-title mb-0">Gestión de Colaboradores</h5>
+                    </div>
+                    <div class="card-body">
+                        {% set assigned_ids = assigned_users|map(attribute='_id')|map('string')|list %}
+                        <form method="POST"
+                              action="{{ url_for('director.assign_users', iniciativa_id=iniciativa._id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+                            <div class="mb-3">
+                                <label for="user_ids" class="form-label">Asignar Colaboradores:</label>
+                                <select class="form-select" id="user_ids" name="user_ids" multiple required>
+                                    {% for colaborador in colaboradores %}
+                                    <option value="{{ colaborador._id|string }}"
+                                            {% if colaborador._id|string in assigned_ids %}selected{% endif %}>
+                                        {{ colaborador.nombre or colaborador.email }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">
+                                    Mantén presionada la tecla Ctrl (o ⌘ en Mac) para seleccionar varios usuarios.
+                                </div>
+                            </div>
+
+                            <!-- Selección de Coordinadores -->
+                            <div class="mb-3">
+                                <label class="form-label">Seleccionar Coordinadores:</label>
+                                <p class="text-muted">Los coordinadores pueden crear tareas y gestionar la
+                                    iniciativa.</p>
+                                <div id="coordinator-container" class="mt-2 border p-3 rounded">
+                                    <div class="alert alert-info">
+                                        <i class="fas fa-info-circle me-2"></i>
+                                        Selecciona usuarios para mostrar opciones de coordinador.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-user-plus me-2"></i> Asignar Usuarios
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Lista de usuarios asignados -->
+                <div class="card mb-4">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="card-title mb-0">Colaboradores Asignados</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if assigned_users %}
+                        <div class="list-group">
+                            {% for user in assigned_users %}
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="mb-0">
+                                        {{ user.nombre or user.email }}
+                                        {% if user.role == 'coordinator' %}
+                                        <span class="badge bg-warning">Coordinador</span>
+                                        {% endif %}
+                                    </h6>
+                                    <small class="text-muted">{{ user.email }}</small>
+                                </div>
+                                <form method="POST"
+                                      action="{{ url_for('director.unassign_user', iniciativa_id=iniciativa._id, user_id=user._id) }}"
+                                      class="d-inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                    <button type="submit" class="btn btn-sm btn-danger"
+                                            onclick="return confirm('¿Estás seguro de desasignar a este usuario?');">
+                                        <i class="fas fa-user-minus"></i>
+                                    </button>
+                                </form>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i> No hay colaboradores asignados a esta iniciativa.
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+        </div>
+        {# -- Historial de Asignaciones -- #}
+        <div class="card mb-4">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">Historial de Asignaciones</h5>
+            </div>
+            <div class="card-body">
+                {% if assignments_history %}
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Tipo</th>
+                            <th>Usuario</th>
+                            <th>Ejecutado por</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for a in assignments_history %}
+                        <tr>
+                            <td>{{ a.timestamp and format_date(a.timestamp) or '-' }}</td>
+                            <td>
                     <span class="badge {{ 'bg-success' if a.type=='assignment' else 'bg-danger' }}">
                       {{ 'Asignación' if a.type=='assignment' else 'Desasignación' }}
                     </span>
-                  </td>
-                  <td>{{ a.user_email }}</td>
-                  <td>{{ a.type=='assignment' and a.assigned_by_email or a.removed_by_email }}</td>
-                </tr>
-              {% endfor %}
-            </tbody>
-          </table>
+                            </td>
+                            <td>{{ a.user_email }}</td>
+                            <td>{{ a.type=='assignment' and a.assigned_by_email or a.removed_by_email }}</td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i> No hay historial disponible.
+                </div>
+                {% endif %}
+            </div>
         </div>
-      {% else %}
-        <div class="alert alert-info">
-          <i class="fas fa-info-circle me-2"></i> No hay historial disponible.
-        </div>
-      {% endif %}
     </div>
-  </div>
-</div>
 
-{# Modal Crear Nueva Tarea #}
-<div class="modal fade" id="createTaskModal" tabindex="-1" aria-labelledby="createTaskModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <form action="{{ url_for('director.create_task', iniciativa_id=iniciativa._id) }}" method="POST">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <div class="modal-header bg-primary text-white">
-          <h5 class="modal-title" id="createTaskModalLabel">Crear Nueva Tarea</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body">
-          <div class="mb-3">
-            <label for="taskContent" class="form-label">Contenido <span class="text-danger">*</span></label>
-            <textarea id="taskContent" name="content" class="form-control" rows="4" required
-                      placeholder="Describe la tarea (máx. 200 palabras)"></textarea>
-            <div class="form-text"><span id="word-counter">0</span>/200 palabras</div>
-          </div>
-          <div class="mb-3">
-            <label for="assignedUsers" class="form-label">Asignar a colaboradores</label>
-            <select id="assignedUsers" name="assigned_users" class="form-select" multiple>
-              {% for u in colaboradores if u.role in ['colaborador','director'] %}
-                <option value="{{ u._id }}">{{ u.nombre or u.email }}</option>
-              {% endfor %}
-            </select>
-            <div class="form-text">Mantén Ctrl (⌘ en Mac) para varios.</div>
-          </div>
+    {# Modal Crear Nueva Tarea #}
+    <div class="modal fade" id="createTaskModal" tabindex="-1" aria-labelledby="createTaskModalLabel"
+         aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <form action="{{ url_for('director.create_task', iniciativa_id=iniciativa._id) }}" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title" id="createTaskModalLabel">Crear Nueva Tarea</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="taskContent" class="form-label">Contenido <span
+                                    class="text-danger">*</span></label>
+                            <textarea id="taskContent" name="content" class="form-control" rows="4" required
+                                      placeholder="Describe la tarea (máx. 200 palabras)"></textarea>
+                            <div class="form-text"><span id="word-counter">0</span>/200 palabras</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="assignedUsers" class="form-label">Asignar a colaboradores</label>
+                            <select id="assignedUsers" name="assigned_users" class="form-select" multiple>
+                                {% for u in colaboradores if u.role in ['colaborador','director'] %}
+                                <option value="{{ u._id }}">{{ u.nombre or u.email }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">Mantén Ctrl (⌘ en Mac) para varios.</div>
+                        </div>
 
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" id="submitTask">Crear Tarea</button>
+                    </div>
+                </form>
+            </div>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" class="btn btn-primary" id="submitTask">Crear Tarea</button>
-        </div>
-      </form>
     </div>
-  </div>
-</div>
 
-{% endblock %}
+    {% endblock %}
 
 
-{% block extra_js %}
-  {{ super() }}
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      const userSelect = document.getElementById('user_ids');
-      const coordinatorContainers = [
-        document.getElementById('coordinator-container'),
-        document.getElementById('coordinator-selection')
-      ];
+    {% block extra_js %}
+    {{ super() }}
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const userSelect = document.getElementById('user_ids');
+            const coordinatorContainers = [
+                document.getElementById('coordinator-container'),
+                document.getElementById('coordinator-selection')
+            ];
 
-      function updateCoordinatorOptions() {
-        coordinatorContainers.forEach(c => c.innerHTML = '');
-        const selected = Array.from(userSelect.selectedOptions);
-        if (!selected.length) {
-          coordinatorContainers.forEach(c => {
-            c.innerHTML = `
-              <div class="alert alert-info">
-                <i class="fas fa-info-circle me-2"></i>
-                Selecciona usuarios para mostrar opciones de coordinador.
-              </div>`;
-          });
-          return;
-        }
-        selected.forEach(opt => {
-          const userId = opt.value;
-          const userName = opt.text;
-          let isCoordinator = false;
-          {% for user in assigned_users %}
-            {% if user.role == 'coordinator' %}
-              if ('{{ user._id }}' === userId) { isCoordinator = true; }
-            {% endif %}
-          {% endfor %}
-          const html = `
-            <div class="form-check mb-2">
-              <input class="form-check-input" type="checkbox"
-                     name="coordinator_ids" value="${userId}"
-                     id="coord_${userId}"
-                     ${isCoordinator ? 'checked' : ''}>
-              <label class="form-check-label" for="coord_${userId}">
-                ${userName}
-              </label>
-            </div>`;
-          coordinatorContainers.forEach(c => c.insertAdjacentHTML('beforeend', html));
+            function updateCoordinatorOptions() {
+                coordinatorContainers.forEach(c => c.innerHTML = '');
+                const selected = Array.from(userSelect.selectedOptions);
+                if (!selected.length) {
+                    coordinatorContainers.forEach(c => {
+                        c.innerHTML = `
+                          <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Selecciona usuarios para mostrar opciones de coordinador.
+                          </div>`;
+                    });
+                    return;
+                }
+                    selected.forEach(opt => {
+                    const userId = opt.value;
+                    const userName = opt.text;
+                    let isCoordinator = false;
+                    {% for user in assigned_users %}
+                        {% if user.role == 'coordinator' %}
+                            if ('{{ user._id }}' === userId) {
+                                isCoordinator = true;
+                            }
+                        {% endif %}
+                    {% endfor %}
+                    const html = `
+                        <div class="form-check mb-2">
+                          <input class="form-check-input" type="checkbox"
+                                 name="coordinator_ids" value="${userId}"
+                                 id="coord_${userId}"
+                                 ${isCoordinator ? 'checked' : ''}>
+                          <label class="form-check-label" for="coord_${userId}">
+                            ${userName}
+                          </label>
+                        </div>`;
+                    coordinatorContainers.forEach(c => c.insertAdjacentHTML('beforeend', html));
+                });
+            }
+
+            updateCoordinatorOptions();
+            userSelect.addEventListener('change', updateCoordinatorOptions);
+
+            const contentEl = document.getElementById('taskContent');
+            const counterEl = document.getElementById('word-counter');
+            const submitBtn = document.getElementById('submitTask');
+
+            if (contentEl) {
+                contentEl.addEventListener('input', () => {
+                    const words = contentEl.value.trim().split(/\s+/).filter(w => w).length;
+                    counterEl.textContent = words;
+                    submitBtn.disabled = words > 200;
+                    counterEl.classList.toggle('text-danger', words > 200);
+                });
+            }
         });
-      }
-
-      updateCoordinatorOptions();
-      userSelect.addEventListener('change', updateCoordinatorOptions);
-
-      // --- Resto de tu JS para tareas (completeTask, reopenTask, deleteTask, updateTaskCounters, contador palabras) ---
-      // (déjalo igual que antes, solo asegúrate de que el meta CSRF tenga name="csrf-token")
-    });
-  </script>
-{% endblock %}
+    </script>
+    {% endblock %}

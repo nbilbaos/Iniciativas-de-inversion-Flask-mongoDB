@@ -100,14 +100,26 @@
                                 <div class="d-flex justify-content-between align-items-start">
                                     <div class="task-content">{{ task.content }}</div>
                                     <div class="task-actions">
-                                        <button class="btn btn-sm btn-success complete-task-btn"
-                                                data-task-id="{{ task._id }}">
+                                        <!-- Botón completar -->
+                                        <a href="{{ url_for('director.complete_task', task_id=task._id) }}"
+                                           class="btn btn-sm btn-success"
+                                           onclick="event.preventDefault(); document.getElementById('complete-form-{{ task._id }}').submit();">
                                             <i class="fas fa-check"></i>
-                                        </button>
-                                        <button class="btn btn-sm btn-danger delete-task-btn"
-                                                data-task-id="{{ task._id }}">
+                                        </a>
+                                        <!-- Botón eliminar -->
+                                        <a href="{{ url_for('director.delete_task', task_id=task._id) }}"
+                                           class="btn btn-sm btn-danger"
+                                           onclick="event.preventDefault(); if(confirm('¿Estás seguro de eliminar esta tarea?')) document.getElementById('delete-form-{{ task._id }}').submit();">
                                             <i class="fas fa-trash"></i>
-                                        </button>
+                                        </a>
+
+                                        <!-- Formularios ocultos -->
+                                        <form id="complete-form-{{ task._id }}" action="{{ url_for('director.complete_task', task_id=task._id) }}" method="POST" style="display: none;">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                        </form>
+                                        <form id="delete-form-{{ task._id }}" action="{{ url_for('director.delete_task', task_id=task._id) }}" method="POST" style="display: none;">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                        </form>
                                     </div>
                                 </div>
                                 <div class="task-meta mt-3">
@@ -120,7 +132,7 @@
                                     </div>
                                     <div>
                                         <i class="fas fa-calendar me-1"></i> Fecha:
-                                        {{ fecha_variable|format_date('%d/%m/%Y %H:%M') }}
+                                        {{ task.created_at|format_date('%d/%m/%Y %H:%M') if task.created_at }}
                                     </div>
                                     {% if task.assigned_to %}
                                         <div>
@@ -160,14 +172,26 @@
                                         </div>
                                     </div>
                                     <div class="task-actions">
-                                        <button class="btn btn-sm btn-warning reopen-task-btn"
-                                                data-task-id="{{ task._id }}">
+                                        <!-- Botón reabrir -->
+                                        <a href="{{ url_for('director.reopen_task', task_id=task._id) }}"
+                                           class="btn btn-sm btn-warning"
+                                           onclick="event.preventDefault(); document.getElementById('reopen-form-{{ task._id }}').submit();">
                                             <i class="fas fa-redo-alt"></i>
-                                        </button>
-                                        <button class="btn btn-sm btn-danger delete-task-btn"
-                                                data-task-id="{{ task._id }}">
+                                        </a>
+                                        <!-- Botón eliminar -->
+                                        <a href="{{ url_for('director.delete_task', task_id=task._id) }}"
+                                           class="btn btn-sm btn-danger"
+                                           onclick="event.preventDefault(); if(confirm('¿Estás seguro de eliminar esta tarea?')) document.getElementById('delete-form-completed-{{ task._id }}').submit();">
                                             <i class="fas fa-trash"></i>
-                                        </button>
+                                        </a>
+
+                                        <!-- Formularios ocultos -->
+                                        <form id="reopen-form-{{ task._id }}" action="{{ url_for('director.reopen_task', task_id=task._id) }}" method="POST" style="display: none;">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                        </form>
+                                        <form id="delete-form-completed-{{ task._id }}" action="{{ url_for('director.delete_task', task_id=task._id) }}" method="POST" style="display: none;">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                        </form>
                                     </div>
                                 </div>
                                 <div class="task-meta mt-3">
@@ -180,7 +204,7 @@
                                     </div>
                                     <div>
                                         <i class="fas fa-calendar me-1"></i> Fecha de creación:
-                                        {{ fecha_variable|format_date('%d/%m/%Y %H:%M') }}
+                                        {{ task.created_at|format_date('%d/%m/%Y %H:%M') if task.created_at }}
                                     </div>
                                     <div>
                                         <i class="fas fa-check-circle me-1"></i> Completada por:
@@ -188,7 +212,7 @@
                                             {% set completer = users.get(task.completed_by, {}) %}
                                             {{ completer.nombre if completer.nombre else completer.email or 'Usuario desconocido' }}
                                         </strong>
-                                        el {{ fecha_variable|format_date('%d/%m/%Y %H:%M') }}
+                                        el {{ task.completed_at|format_date('%d/%m/%Y %H:%M') if task.completed_at }}
                                     </div>
                                     {% if task.assigned_to %}
                                         <div>
@@ -231,20 +255,40 @@
                                     </div>
                                     <div class="task-actions">
                                         {% if task.is_completed %}
-                                            <button class="btn btn-sm btn-warning reopen-task-btn"
-                                                    data-task-id="{{ task._id }}">
+                                            <!-- Botón reabrir -->
+                                            <a href="{{ url_for('director.reopen_task', task_id=task._id) }}"
+                                               class="btn btn-sm btn-warning"
+                                               onclick="event.preventDefault(); document.getElementById('reopen-form-all-{{ task._id }}').submit();">
                                                 <i class="fas fa-redo-alt"></i>
-                                            </button>
+                                            </a>
                                         {% else %}
-                                            <button class="btn btn-sm btn-success complete-task-btn"
-                                                    data-task-id="{{ task._id }}">
+                                            <!-- Botón completar -->
+                                            <a href="{{ url_for('director.complete_task', task_id=task._id) }}"
+                                               class="btn btn-sm btn-success"
+                                               onclick="event.preventDefault(); document.getElementById('complete-form-all-{{ task._id }}').submit();">
                                                 <i class="fas fa-check"></i>
-                                            </button>
+                                            </a>
                                         {% endif %}
-                                        <button class="btn btn-sm btn-danger delete-task-btn"
-                                                data-task-id="{{ task._id }}">
+                                        <!-- Botón eliminar -->
+                                        <a href="{{ url_for('director.delete_task', task_id=task._id) }}"
+                                           class="btn btn-sm btn-danger"
+                                           onclick="event.preventDefault(); if(confirm('¿Estás seguro de eliminar esta tarea?')) document.getElementById('delete-form-all-{{ task._id }}').submit();">
                                             <i class="fas fa-trash"></i>
-                                        </button>
+                                        </a>
+
+                                        <!-- Formularios ocultos -->
+                                        {% if task.is_completed %}
+                                            <form id="reopen-form-all-{{ task._id }}" action="{{ url_for('director.reopen_task', task_id=task._id) }}" method="POST" style="display: none;">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                            </form>
+                                        {% else %}
+                                            <form id="complete-form-all-{{ task._id }}" action="{{ url_for('director.complete_task', task_id=task._id) }}" method="POST" style="display: none;">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                            </form>
+                                        {% endif %}
+                                        <form id="delete-form-all-{{ task._id }}" action="{{ url_for('director.delete_task', task_id=task._id) }}" method="POST" style="display: none;">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                        </form>
                                     </div>
                                 </div>
                                 <div class="task-meta mt-3">
@@ -257,7 +301,7 @@
                                     </div>
                                     <div>
                                         <i class="fas fa-calendar me-1"></i> Fecha de creación:
-                                        {{ fecha_variable|format_date('%d/%m/%Y %H:%M') }}
+                                        {{ task.created_at|format_date('%d/%m/%Y %H:%M') if task.created_at }}
                                     </div>
                                     {% if task.is_completed and task.completed_by %}
                                         <div>
@@ -266,7 +310,7 @@
                                                 {% set completer = users.get(task.completed_by, {}) %}
                                                 {{ completer.nombre if completer.nombre else completer.email or 'Usuario desconocido' }}
                                             </strong>
-                                            el {{ fecha_variable|format_date('%d/%m/%Y %H:%M') }}
+                                            el {{ task.completed_at|format_date('%d/%m/%Y %H:%M') if task.completed_at }}
                                         </div>
                                     {% endif %}
                                     {% if task.assigned_to %}
@@ -345,114 +389,12 @@
         const counterEl = document.getElementById('word-counter');
         const submitBtn = document.getElementById('submitTask');
 
-        contentEl.addEventListener('input', () => {
-            const words = contentEl.value.trim().split(/\s+/).filter(w => w).length;
-            counterEl.textContent = words;
-            submitBtn.disabled = words > 200;
-            counterEl.classList.toggle('text-danger', words > 200);
-        });
-
-        // Manejar completar tareas
-        document.querySelectorAll('.complete-task-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const taskId = this.getAttribute('data-task-id');
-                completeTask(taskId);
-            });
-        });
-
-        // Manejar reabrir tareas
-        document.querySelectorAll('.reopen-task-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const taskId = this.getAttribute('data-task-id');
-                reopenTask(taskId);
-            });
-        });
-
-        // Manejar eliminar tareas
-        document.querySelectorAll('.delete-task-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const taskId = this.getAttribute('data-task-id');
-                if (confirm('¿Estás seguro de que deseas eliminar esta tarea? Esta acción no se puede deshacer.')) {
-                    deleteTask(taskId);
-                }
-            });
-        });
-
-        // Función para completar tarea
-        function completeTask(taskId) {
-            fetch(`/director/tareas/${taskId}/completar`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('Tarea marcada como completada');
-                    location.reload();
-                } else {
-                    alert('Error: ' + data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Ha ocurrido un error al completar la tarea');
-            });
-        }
-
-        // Función para reabrir tarea
-        function reopenTask(taskId) {
-            fetch(`/director/tareas/${taskId}/reabrir`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('Tarea reabierta correctamente');
-                    location.reload();
-                } else {
-                    alert('Error: ' + data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Ha ocurrido un error al reabrir la tarea');
-            });
-        }
-
-        // Función para eliminar tarea
-        function deleteTask(taskId) {
-            fetch(`/director/tareas/${taskId}/eliminar`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('Tarea eliminada correctamente');
-                    // Eliminar el elemento del DOM o recargar la página
-                    const taskElement = document.getElementById(`task-${taskId}`);
-                    if (taskElement) {
-                        taskElement.remove();
-                    } else {
-                        location.reload();
-                    }
-                } else {
-                    alert('Error: ' + data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Ha ocurrido un error al eliminar la tarea');
+        if (contentEl) {
+            contentEl.addEventListener('input', () => {
+                const words = contentEl.value.trim().split(/\s+/).filter(w => w).length;
+                counterEl.textContent = words;
+                submitBtn.disabled = words > 200;
+                counterEl.classList.toggle('text-danger', words > 200);
             });
         }
     });
