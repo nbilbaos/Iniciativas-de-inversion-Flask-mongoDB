@@ -2,6 +2,7 @@ services:
   - type: web
     name: flask-mongodb-app
     env: python
+    plan: starter # Cambia a free si estás usando el plan gratuito
     buildCommand: |
       pip install -r requirements.txt
       chmod +x setup.sh
@@ -16,4 +17,6 @@ services:
         sync: false
       - key: JWT_SECRET_KEY
         sync: false
+      - key: INITIATIVES_COLLECTION
+        value: db_metadata.iniciativas_2025
     healthCheckPath: /health
