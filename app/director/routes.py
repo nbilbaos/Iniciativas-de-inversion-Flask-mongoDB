@@ -19,48 +19,13 @@ from . import director_bp
 from ..auth.utils import director_required
 from .. import mongo, csrf
 from ..models.user import User
-
+from app.utils.timezone_utils import now_chile, format_chile_datetime, chile_to_utc
 from flask import jsonify
 from ..models.task import Task
 from unidecode import unidecode  # Asegúrate de tener `unidecode` instalado
 
 # Agregado al inicio de la función view_stats()
 from collections import defaultdict
-
-# Añadir esta función de utilidad en app/director/routes.py
-# Colócala al principio del archivo, después de las importaciones
-
-def format_date_for_template(date_value):
-    """
-    Formatea una fecha para usar en plantillas, maneja tanto objetos datetime como strings.
-
-    Args:
-        date_value: Puede ser un objeto datetime, un string o None
-
-    Returns:
-        Un objeto datetime si se puede convertir, None en caso contrario
-    """
-    if not date_value:
-        return None
-
-    if isinstance(date_value, datetime):
-        return date_value
-
-    # Si es un string, intenta convertirlo a datetime
-    if isinstance(date_value, str):
-        try:
-            # Intenta varios formatos de fecha comunes
-            for format_str in ['%Y-%m-%d', '%d/%m/%Y', '%Y-%m-%dT%H:%M:%S', '%Y-%m-%d %H:%M:%S']:
-                try:
-                    return datetime.strptime(date_value, format_str)
-                except ValueError:
-                    continue
-        except Exception as e:
-            print(f"Error al convertir fecha '{date_value}': {e}")
-
-    # Si no se pudo convertir, devuelve None
-    return None
-
 
 @director_bp.route('/dashboard')
 @login_required
@@ -101,6 +66,7 @@ def dashboard():
             'iniciativas_activas': len(iniciativas_activas),
             'conteo_estados': conteo_estados
         }
+        now = now_chile()
 
         return render_template(
             'director/dashboard.html',
@@ -191,7 +157,7 @@ def crear_colaborador():
             "password": hashed,
             "role": "colaborador",
             "active": True,
-            "created_at": datetime.utcnow(),
+            "created_at": chile_to_utc(now_chile()),
             "last_login": None,
             "nombre": nombre,
             "rut": rut,
@@ -380,10 +346,6 @@ def list_initiatives():
             'pages': (total + per_page - 1) // per_page
         }
 
-        # Procesar las fechas para todas las iniciativas
-        for iniciativa in iniciativas:
-            if 'fecha_creacion' in iniciativa:
-                iniciativa['fecha_creacion'] = format_date_for_template(iniciativa['fecha_creacion'])
 
         return render_template(
             'director/iniciativas.html',
@@ -533,7 +495,7 @@ def edit_initiative(iniciativa_id):
                 "type": "update",
                 "user_id": current_user.get_id(),
                 "user_email": current_user.email,
-                "timestamp": datetime.utcnow(),
+                "timestamp": chile_to_utc(now_chile()),
                 "fields_modified": list(update_data.keys())
             }
             mongo.db.modification_history.insert_one(history_entry)
@@ -618,7 +580,7 @@ def assign_users(iniciativa_id):
                     "user_email": user.get('email', 'Desconocido'),
                     "assigned_by": current_user.get_id(),
                     "assigned_by_email": current_user.email,
-                    "timestamp": datetime.utcnow(),
+                    "timestamp": chile_to_utc(now_chile()),
                     "role": role  # Añadir el rol de asignación
                 }
                 mongo.db.assignment_history.insert_one(history_entry)
@@ -631,7 +593,7 @@ def assign_users(iniciativa_id):
                             "initiative_id": iniciativa_id,
                             "nombre": iniciativa.get('nombre', 'Sin nombre'),
                             "assigned_by": current_user.get_id(),
-                            "assigned_at": datetime.utcnow(),
+                            "assigned_at": chile_to_utc(now_chile()),
                             "active": True,
                             "role": role  # Añadir el rol de asignación
                         }
@@ -686,7 +648,7 @@ def unassign_user(iniciativa_id, user_id):
                     "user_email": user.get('email', 'Desconocido'),
                     "removed_by": current_user.get_id(),
                     "removed_by_email": current_user.email,
-                    "timestamp": datetime.utcnow()
+                    "timestamp": chile_to_utc(now_chile())
                 }
                 mongo.db.assignment_history.insert_one(history_entry)
 
@@ -696,7 +658,7 @@ def unassign_user(iniciativa_id, user_id):
                     {"$set": {
                         "iniciativas.$[elem].active": False,
                         "iniciativas.$[elem].removed_by": current_user.get_id(),
-                        "iniciativas.$[elem].removed_at": datetime.utcnow()
+                        "iniciativas.$[elem].removed_at": chile_to_utc(now_chile())
                     }},
                     array_filters=[{"elem.initiative_id": iniciativa_id}]
                 )
@@ -787,7 +749,7 @@ def crear_iniciativa():
             print("DEBUG: Estableciendo campos adicionales")
             # Establecer estado inicial
             iniciativa_data['estado'] = 'No Iniciado'
-            iniciativa_data['fecha_creacion'] = datetime.utcnow()
+            iniciativa_data['fecha_creacion'] = chile_to_utc(now_chile())
             iniciativa_data['creado_por'] = current_user.get_id()
             iniciativa_data['creado_por_email'] = current_user.email
 
@@ -804,7 +766,7 @@ def crear_iniciativa():
                     "estado_nuevo": "No Iniciado",
                     "cambiado_por": current_user.get_id(),
                     "cambiado_por_email": current_user.email,
-                    "timestamp": datetime.utcnow(),
+                    "timestamp": chile_to_utc(now_chile()),
                     "comentario": "Iniciativa creada"
                 }
 
@@ -876,7 +838,7 @@ def cambiar_estado_iniciativa(iniciativa_id):
             {"_id": ObjectId(iniciativa_id)},
             {"$set": {
                 "estado": nuevo_estado,
-                "ultimo_cambio_estado": datetime.utcnow(),
+                "ultimo_cambio_estado": chile_to_utc(now_chile()),
                 "estado_cambiado_por": current_user.get_id()
             }}
         )
@@ -888,7 +850,7 @@ def cambiar_estado_iniciativa(iniciativa_id):
             "estado_nuevo": nuevo_estado,
             "cambiado_por": current_user.get_id(),
             "cambiado_por_email": current_user.email,
-            "timestamp": datetime.utcnow(),
+            "timestamp": chile_to_utc(now_chile()),
             "comentario": comentario
         }
 
@@ -954,7 +916,7 @@ def actualizar_iniciativas_masivo():
             {
                 "$set": {
                     "estado": nuevo_estado,
-                    "ultimo_cambio_estado": datetime.utcnow(),
+                    "ultimo_cambio_estado": chile_to_utc(now_chile()),
                     "estado_cambiado_por": current_user.get_id()
                 }
             }
@@ -972,7 +934,7 @@ def actualizar_iniciativas_masivo():
                     "estado_nuevo": nuevo_estado,
                     "cambiado_por": current_user.get_id(),
                     "cambiado_por_email": current_user.email,
-                    "timestamp": datetime.utcnow(),
+                    "timestamp": chile_to_utc(now_chile()),
                     "comentario": "Actualización masiva de estado"
                 }
                 mongo.db.estado_iniciativa_historial.insert_one(historial)
@@ -1487,7 +1449,7 @@ def generate_minuta(iniciativa_id):
                 "show_project_section": show_project_section,
                 "project_section_title": project_section_title,
                 "project_features": project_features,
-                "updated_at": datetime.utcnow(),
+                "updated_at": chile_to_utc(now_chile()),
                 "updated_by": current_user.get_id()
             }
 
@@ -1722,7 +1684,8 @@ def download_minuta(iniciativa_id):
         # Nombre del archivo
         proyecto_nombre = iniciativa.get('nombre_iniciativa', iniciativa.get('nombre', 'proyecto'))
         safe_name = "".join([c for c in proyecto_nombre if c.isalpha() or c.isdigit() or c == ' ']).rstrip()
-        filename = f"MINUTA_{safe_name}_{datetime.now().strftime('%Y%m%d')}.pdf"
+        fecha_chile = now_chile().strftime('%Y%m%d')
+        filename = f"MINUTA_{safe_name}_{fecha_chile}.pdf"
 
         # Crear respuesta con el PDF
         response = current_app.response_class(

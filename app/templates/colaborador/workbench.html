@@ -273,7 +273,7 @@
                                                     </div>
                                                     <div>
                                                         <i class="fas fa-calendar me-1"></i> Fecha:
-                                                        {{ task.created_at.strftime('%d/%m/%Y %H:%M') }}
+                                                        {{ task.created_at|chile_datetime }}
                                                     </div>
                                                     {% if task.assigned_to %}
                                                     <div>
@@ -332,7 +332,8 @@
                                                     </div>
                                                     <div>
                                                         <i class="fas fa-calendar me-1"></i> Creada el:
-                                                        {{ task.created_at.strftime('%d/%m/%Y %H:%M') }}
+                                                        {{ task.created_at|chile_datetime }}
+
                                                     </div>
                                                     <div>
                                                         <i class="fas fa-check-circle me-1"></i> Completada por:
@@ -341,7 +342,7 @@
                                                             {{ completer.get('nombre', completer.get('email', 'Usuario
                                                             desconocido')) }}
                                                         </strong>
-                                                        el {{ task.completed_at.strftime('%d/%m/%Y %H:%M') }}
+                                                        el {{ task.completed_at|chile_datetime }}
                                                     </div>
                                                     {% if task.assigned_to %}
                                                     <div>
@@ -410,7 +411,7 @@
                                                     </div>
                                                     <div>
                                                         <i class="fas fa-calendar me-1"></i> Fecha de creación:
-                                                        {{ task.created_at.strftime('%d/%m/%Y %H:%M') }}
+                                                        {{ task.created_at|chile_datetime }}
                                                     </div>
                                                     {% if task.is_completed and task.completed_by %}
                                                     <div>
@@ -420,7 +421,8 @@
                                                             {{ completer.get('nombre', completer.get('email', 'Usuario
                                                             desconocido')) }}
                                                         </strong>
-                                                        el {{ task.completed_at.strftime('%d/%m/%Y %H:%M') }}
+                                                        el {{ task.completed_at|chile_datetime }}
+
                                                     </div>
                                                     {% endif %}
                                                     {% if task.assigned_to %}
@@ -712,7 +714,7 @@
                         {% for activity in activity_log %}
                         <div class="timeline-item">
                             <div class="timeline-date">
-                                {{ activity.timestamp.strftime('%d/%m/%Y %H:%M') }}
+                                {{ activity.timestamp.|chile_datetime }}
                             </div>
                             <div class="timeline-content">
                                 <strong>{{ activity.user_name }}</strong> {{ activity.action }}

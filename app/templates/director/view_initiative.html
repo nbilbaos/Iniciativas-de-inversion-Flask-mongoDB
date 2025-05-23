@@ -14,7 +14,7 @@
 {% if date_value is string %}
 {{ date_value }}
 {% else %}
-{{ date_value.strftime('%d/%m/%Y %H:%M:%S') }}
+{{ date_value|chile_datetime }}
 {% endif %}
 {% else %}
 -
@@ -369,7 +369,7 @@
                                         {{ completer.nombre if completer.nombre else completer.email or 'Usuario
                                         desconocido' }}
                                     </strong>
-                                    el {{ task.completed_at|format_date('%d/%m/%Y %H:%M') if task.completed_at }}
+                                    el {{ task.completed_at|chile_datetime if task.completed_at }}
                                 </div>
                                 {% if task.assigned_to %}
                                 <div>

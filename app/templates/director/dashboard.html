@@ -1,6 +1,8 @@
 <!--pp/templates/director/dashboard.html-->
 {% extends "base.html" %}
 {% block title %}Panel de Director{% endblock %}
+
+
 {% block content %}
 
 <div class="container py-4">
@@ -228,11 +230,11 @@
                     <h5 class="mb-0">Información de Usuario</h5>
                 </div>
                 <div class="card-body">
-                    <p><strong>Usuario actual:</strong> {{ current_user.email }}</p>
+                    <p><strong>Usuario actual:</strong> {{current_user.email}}</p>
                     <p><strong>Rol:</strong> Director</p>
                     <p><strong>Último ingreso:</strong>
                         {% if current_user.last_login %}
-                            {{ current_user.last_login|format_date('%d/%m/%Y %H:%M:%S') }}
+                            {{ current_user.last_login|chile_datetime  }}
                         {% else %}
                             Primer ingreso
                         {% endif %}
@@ -279,6 +281,9 @@
     </div>
 </div>
 
+{% endblock %}
+
+{% block extra_js %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Configurar el modal para cambiar estado
@@ -302,5 +307,4 @@
         }
     });
 </script>
-
 {% endblock %}

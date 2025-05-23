@@ -1,7 +1,7 @@
 # app/models/task.py
 from datetime import datetime
 from bson.objectid import ObjectId
-
+from app.utils.timezone_utils import now_chile, chile_to_utc
 
 class Task:
     """Representa una tarea en el sistema."""
@@ -13,7 +13,7 @@ class Task:
         self.content = content  # Contenido de la tarea (máximo 200 palabras)
         self.initiative_id = initiative_id  # ID de la iniciativa relacionada
         self.created_by = created_by  # ID del usuario que creó la tarea
-        self.created_at = created_at or datetime.utcnow()
+        self.created_at = chile_to_utc(now_chile())
         self.assigned_to = assigned_to or []  # Lista de IDs de usuarios asignados (opcional)
         self.is_completed = is_completed  # Si la tarea está completada o no
         self.completed_by = completed_by  # ID del usuario que completó la tarea
@@ -26,7 +26,7 @@ class Task:
 
         self.is_completed = True
         self.completed_by = user_id
-        self.completed_at = datetime.utcnow()
+        self.completed_at = chile_to_utc(now_chile())
         return True
 
     def reopen(self):

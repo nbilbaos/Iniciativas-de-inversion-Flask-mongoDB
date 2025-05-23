@@ -56,7 +56,7 @@
                     {% if item.fecha_asignacion %}
                     <p class="card-text">
                         <strong>Asignado el:</strong>
-                        {{ item.fecha_asignacion.strftime('%d/%m/%Y %H:%M') }}
+                        {{ item.fecha_asignacion|chile_datetime }}
                     </p>
                     {% endif %}
 

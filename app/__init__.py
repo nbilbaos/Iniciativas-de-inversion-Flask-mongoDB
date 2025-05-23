@@ -8,6 +8,7 @@ import sys
 import importlib
 from bson.objectid import ObjectId
 from .health import health_bp
+from app.utils.template_filters import register_template_filters
 
 # Instancias globales
 mongo = PyMongo()
@@ -133,16 +134,13 @@ def create_app():
     app.config['WTF_CSRF_SSL_STRICT'] = False  # Para entorno sin HTTPS
 
 
-
-
-
     # Inicializar extensiones
     mongo.init_app(app)
     login_manager.init_app(app)
     csrf.init_app(app)
     login_manager.login_view = 'auth.login'
     login_manager.login_message = 'Por favor inicia sesión para acceder a esta página.'
-
+    register_template_filters(app)
     # Crear índices para mejorar la búsqueda
     with app.app_context():
         try:
@@ -340,10 +338,25 @@ def create_app():
             # Si hay un error, devolver el valor como string o un valor por defecto
             return str(date_value) if date_value else "-"
 
-    # Registrar procesador de contexto para CSRF
+    # Busca la función context_processor y modifícala:
     @app.context_processor
     def inject_csrf_token():
-        return {'csrf_token': generate_csrf()}
+        from flask_wtf.csrf import generate_csrf
+        # Importar dentro de la función para evitar errores de contexto
+        try:
+            from app.utils.timezone_utils import now_chile
+            return {
+                'csrf_token': generate_csrf(),  # ← Nota los paréntesis ()
+                'now_chile': now_chile()
+            }
+        except Exception as e:
+            # Fallback si hay problema
+            from datetime import datetime
+            return {
+                'csrf_token': generate_csrf(),  # ← Nota los paréntesis ()
+                'now_chile': datetime.now()
+            }
+
 
     # Añade este procesador de contexto justo después del procesador inject_csrf_token
     @app.context_processor

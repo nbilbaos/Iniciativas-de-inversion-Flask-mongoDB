@@ -16,6 +16,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Image, Spacer, ListFlowable, ListItem
 from reportlab.lib.units import inch
 import base64
+from app.utils.timezone_utils import now_chile, format_chile_datetime, chile_to_utc
 import os
 
 # Constante para la colección de metadatos de la base de datos
@@ -200,7 +201,7 @@ def dashboard():
         activity_log = activity_log[:5]  # Limitar a 5 actividades
 
         # Obtener fecha actual para el dashboard
-        now = datetime.now()
+        now = now_chile()
 
         return render_template(
             'colaborador/dashboard.html',
@@ -622,7 +623,7 @@ def edit_initiative(iniciativa_id):
 
             if update_data:
                 # Agregar fecha de actualización
-                update_data['ultima_actualizacion'] = datetime.utcnow()
+                update_data['ultima_actualizacion'] = chile_to_utc(now_chile())
 
                 # Actualizar la iniciativa
                 result = initiatives_coll.update_one(
@@ -637,7 +638,7 @@ def edit_initiative(iniciativa_id):
                         "type": "update",
                         "user_id": current_user.get_id(),
                         "user_email": current_user.email,
-                        "timestamp": datetime.utcnow(),
+                        "timestamp": chile_to_utc(now_chile()),
                         "fields_modified": modified_fields,
                         "changes": update_data
                     }
@@ -1203,7 +1204,7 @@ def generate_minuta(iniciativa_id):
                 "show_project_section": show_project_section,
                 "project_section_title": project_section_title,
                 "project_features": project_features,
-                "updated_at": datetime.utcnow(),
+                "updated_at": chile_to_utc(now_chile()),
                 "updated_by": current_user.get_id()
             }
 
@@ -1460,7 +1461,8 @@ def download_minuta(iniciativa_id):
         # Nombre del archivo
         proyecto_nombre = iniciativa.get('nombre_iniciativa', iniciativa.get('nombre', 'proyecto'))
         safe_name = "".join([c for c in proyecto_nombre if c.isalpha() or c.isdigit() or c == ' ']).rstrip()
-        filename = f"MINUTA_{safe_name}_{datetime.now().strftime('%Y%m%d')}.pdf"
+        fecha_chile = now_chile().strftime('%Y%m%d')
+        filename = f"MINUTA_{safe_name}_{fecha_chile}.pdf"
 
         # Crear respuesta con el PDF
         response = current_app.response_class(

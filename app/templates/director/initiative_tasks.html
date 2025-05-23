@@ -132,7 +132,7 @@
                                     </div>
                                     <div>
                                         <i class="fas fa-calendar me-1"></i> Fecha:
-                                        {{ task.created_at|format_date('%d/%m/%Y %H:%M') if task.created_at }}
+                                        {{ task.created_at|chile_datetime if task.created_at }}
                                     </div>
                                     {% if task.assigned_to %}
                                         <div>
@@ -204,7 +204,7 @@
                                     </div>
                                     <div>
                                         <i class="fas fa-calendar me-1"></i> Fecha de creación:
-                                        {{ task.created_at|format_date('%d/%m/%Y %H:%M') if task.created_at }}
+                                        {{ task.created_at||chile_datetime if task.created_at }}
                                     </div>
                                     <div>
                                         <i class="fas fa-check-circle me-1"></i> Completada por:
@@ -212,7 +212,7 @@
                                             {% set completer = users.get(task.completed_by, {}) %}
                                             {{ completer.nombre if completer.nombre else completer.email or 'Usuario desconocido' }}
                                         </strong>
-                                        el {{ task.completed_at|format_date('%d/%m/%Y %H:%M') if task.completed_at }}
+                                        el {{ task.completed_at||chile_datetime if task.completed_at }}
                                     </div>
                                     {% if task.assigned_to %}
                                         <div>
@@ -301,7 +301,7 @@
                                     </div>
                                     <div>
                                         <i class="fas fa-calendar me-1"></i> Fecha de creación:
-                                        {{ task.created_at|format_date('%d/%m/%Y %H:%M') if task.created_at }}
+                                        {{ task.created_at||chile_datetime if task.created_at }}
                                     </div>
                                     {% if task.is_completed and task.completed_by %}
                                         <div>
@@ -310,7 +310,7 @@
                                                 {% set completer = users.get(task.completed_by, {}) %}
                                                 {{ completer.nombre if completer.nombre else completer.email or 'Usuario desconocido' }}
                                             </strong>
-                                            el {{ task.completed_at|format_date('%d/%m/%Y %H:%M') if task.completed_at }}
+                                            el {{ task.completed_at|chile_datetime if task.completed_at }}
                                         </div>
                                     {% endif %}
                                     {% if task.assigned_to %}

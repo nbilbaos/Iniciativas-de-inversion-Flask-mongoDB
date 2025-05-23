@@ -220,7 +220,7 @@
                                                                 </div>
                                                                 <div>
                                                                     <i class="fas fa-calendar me-1"></i> Fecha de creación:
-                                                                    {{ task.created_at|format_date('%d/%m/%Y %H:%M:%S') }}
+                                                                    {{ task.created_at|chile_datetime }}
                                                                 </div>
                                                                 {% if task.is_completed and task.completed_by %}
                                                                 <div>
@@ -229,7 +229,7 @@
                                                                         {% set completer = users.get(task.completed_by, {}) %}
                                                                         {{ completer.get('nombre', completer.get('email', 'Usuario desconocido')) }}
                                                                     </strong>
-                                                                    el {{ task.completed_at|format_date('%d/%m/%Y %H:%M:%S') }}
+                                                                    el {{ task.completed_at|chile_datetime }}
                                                                 </div>
                                                                 {% endif %}
                                                                 {% if task.assigned_to %}

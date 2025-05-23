@@ -185,10 +185,10 @@
                         </div>
                         <div class="col-md-6">
                             <p><strong>Fecha de registro:</strong> 
-                                {{ current_user.created_at.strftime('%d/%m/%Y') if current_user.created_at else 'No disponible' }}
+                                {{ current_user.created_at|chile_date if current_user.created_at else 'No disponible' }}
                             </p>
                             <p><strong>Último acceso:</strong> 
-                                {{ current_user.last_login.strftime('%d/%m/%Y %H:%M:%S') if current_user.last_login else 'Primer ingreso' }}
+                                {{ current_user.created_at.strftime('%d/%m/%Y') if current_user.created_at else 'No disponible' }}
                             </p>
                             <p><strong>Estado:</strong> 
                                 <span class="badge bg-success">Activo</span>
