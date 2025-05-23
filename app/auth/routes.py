@@ -93,7 +93,7 @@ def login():
                             except Exception as e:
                                 current_app.logger.error(f"Error al obtener url_for('director.dashboard'): {str(e)}")
                                 # Si falla, redirigir a la ruta de respaldo
-                                flash('El módulo de director está temporalmente no disponible.', 'warning')
+                                #flash('El módulo de director está temporalmente no disponible.', 'warning')
                                 next_page = url_for('auth.fallback_dashboard')
                         else:
                             try:
@@ -102,7 +102,7 @@ def login():
                             except Exception as e:
                                 current_app.logger.error(f"Error al obtener url_for('colaborador.dashboard'): {str(e)}")
                                 # Si falla, redirigir a la ruta de respaldo
-                                flash('El módulo de colaborador está temporalmente no disponible.', 'warning')
+                                #flash('El módulo de colaborador está temporalmente no disponible.', 'warning')
                                 next_page = url_for('auth.fallback_dashboard')
                     except Exception as route_error:
                         current_app.logger.error(f"Error en la redirección: {str(route_error)}")
