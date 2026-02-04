@@ -67,10 +67,32 @@
                                 <li class="nav-item">
                                     <a class="nav-link" href="{{ url_for('director.colaborador_list') }}">Colaboradores</a>
                                 </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" href="{{ url_for('director.upload_excel') }}">
+                                        <i class="fas fa-file-excel"></i> Importar Excel
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" href="{{ url_for('director.excel_collections') }}">
+                                        <i class="fas fa-table"></i> Colecciones Excel
+                                    </a>
+                                </li>
                             {% else %}
                                 <li class="nav-item">
                                     <a class="nav-link" href="{{ url_for('colaborador.dashboard') }}">Dashboard</a>
                                 </li>
+                                {% if current_user.can_manage_excel %}
+                                <li class="nav-item">
+                                    <a class="nav-link" href="{{ url_for('director.upload_excel') }}">
+                                        <i class="fas fa-file-excel"></i> Importar Excel
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" href="{{ url_for('director.excel_collections') }}">
+                                        <i class="fas fa-table"></i> Colecciones Excel
+                                    </a>
+                                </li>
+                                {% endif %}
                             {% endif %}
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">

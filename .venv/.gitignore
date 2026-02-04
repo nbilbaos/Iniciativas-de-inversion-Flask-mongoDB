@@ -1,6 +1,0 @@
-# Elastic Beanstalk files
-.elasticbeanstalk/*
-# pero sí incluye config.yml
-!.elasticbeanstalk/config.yml
-# y sigue incluyendo cualquier .global.yml
-!.elasticbeanstalk/*.global.yml

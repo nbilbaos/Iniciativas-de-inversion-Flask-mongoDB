@@ -232,6 +232,14 @@
                         </span>
                         </button>
                     </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="gantt-tab" data-bs-toggle="tab"
+                                data-bs-target="#gantt-tasks" type="button" role="tab"
+                                aria-controls="gantt-tasks" aria-selected="false">
+                            Carta Gantt
+                            <i class="fas fa-chart-bar ms-2"></i>
+                        </button>
+                    </li>
                 </ul>
             </div>
 
@@ -499,6 +507,10 @@
                         <i class="fas fa-info-circle me-2"></i> No hay tareas para esta iniciativa.
                     </div>
                     {% endif %}
+                </div>
+
+                <!-- CARTA GANTT -->
+                <div class="tab-pane fade" id="gantt-tasks" role="tabpanel" aria-labelledby="gantt-tab">
                 </div>
 
             </div>

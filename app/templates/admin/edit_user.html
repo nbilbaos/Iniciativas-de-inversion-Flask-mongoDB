@@ -74,6 +74,11 @@
                         </div>
 
                         <div class="mb-3 form-check">
+                            {{ form.can_manage_excel(class="form-check-input", id="can_manage_excel") }}
+                            <label class="form-check-label" for="can_manage_excel">Permiso para gestionar Excel</label>
+                        </div>
+
+                        <div class="mb-3 form-check">
                             {{ form.active(class="form-check-input", id="active") }}
                             <label class="form-check-label" for="active">Usuario Activo</label>
                         </div>

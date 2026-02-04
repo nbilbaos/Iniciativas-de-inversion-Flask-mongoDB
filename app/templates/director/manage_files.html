@@ -128,10 +128,31 @@
                 <div class="card-body">
                     {% if files_enabled %}
                     <!-- Formulario de carga de archivos -->
-                    <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <nav aria-label="breadcrumb">
+                            <ol class="breadcrumb mb-0">
+                                <li class="breadcrumb-item">
+                                    <a href="{{ url_for('director.manage_files', iniciativa_id=iniciativa_id) }}">
+                                        <i class="fas fa-home"></i> Inicio
+                                    </a>
+                                </li>
+                                {% for crumb in breadcrumbs %}
+                                <li class="breadcrumb-item active" aria-current="page">
+                                    <a href="{{ url_for('director.manage_files', iniciativa_id=iniciativa_id, folder_id=crumb.id) }}">
+                                        {{ crumb.name }}
+                                    </a>
+                                </li>
+                                {% endfor %}
+                            </ol>
+                        </nav>
+
+                    </div>
+
+                    <div class="mb-4 p-3 bg-light rounded">
                         <form method="POST" action="{{ url_for('director.upload_file', iniciativa_id=iniciativa_id) }}"
                               enctype="multipart/form-data">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                            <input type="hidden" name="folder_id" value="{{ current_folder._id if current_folder else '' }}">
                             <div class="mb-3">
                                 <label for="file" class="form-label">Seleccionar archivo</label>
                                 <input type="file" class="form-control" id="file" name="file" required>
@@ -153,8 +174,34 @@
                     <hr>
 
                     <!-- Lista de archivos -->
-                    {% if files %}
+                    {% if files or folders %}
                     <div class="row">
+                        <!-- Carpetas -->
+                        {% for folder in folders %}
+                        <div class="col-md-4 col-sm-6 mb-4">
+                            <div class="card file-card h-100 border-warning">
+                                <div class="card-body text-center">
+                                    <a href="{{ url_for('director.manage_files', iniciativa_id=iniciativa_id, folder_id=folder._id) }}" class="text-decoration-none text-dark">
+                                        <div class="file-icon text-warning">
+                                            <i class="fas fa-folder"></i>
+                                        </div>
+                                        <h6 class="card-title">{{ folder.name }}</h6>
+                                    </a>
+                                    <div class="file-card-actions mt-2">
+                                        <form method="POST" action="{{ url_for('director.delete_folder', iniciativa_id=iniciativa_id, folder_id=folder._id) }}" 
+                                              onsubmit="return confirm('¿Estás seguro? Se borrará todo el contenido de la carpeta.');">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                            <button type="submit" class="btn btn-sm btn-danger" title="Eliminar Carpeta">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+
+                        <!-- Archivos -->
                         {% for file in files %}
                         <div class="col-md-4 col-sm-6 mb-4">
                             <div class="card file-card h-100">
@@ -231,7 +278,7 @@
                                 </div>
                                 <div class="card-footer">
                                     <small class="text-muted">
-                                        Subido el {{ file.uploaded_at||chile_datetime }}
+                                        Subido el {{ file.uploaded_at|chile_datetime }}
                                     </small>
                                 </div>
                             </div>
@@ -298,7 +345,7 @@
                     </div>
                     {% else %}
                     <div class="alert alert-info mb-0">
-                        <i class="fas fa-info-circle me-2"></i> No hay archivos subidos para esta iniciativa.
+                        <i class="fas fa-info-circle me-2"></i> Carpeta vacía.
                     </div>
                     {% endif %}
                     {% else %}
@@ -416,7 +463,7 @@
                                     {% endif %}
                                 </strong>
                                 <small class="text-muted">
-                                    {{ fecha_variable||chile_datetime }}
+                                    {{ entry.timestamp|chile_datetime }}
                                 </small>
                             </div>
                             <div>
@@ -484,4 +531,5 @@
         </div>
     </div>
 </div>
+
 {% endblock %}

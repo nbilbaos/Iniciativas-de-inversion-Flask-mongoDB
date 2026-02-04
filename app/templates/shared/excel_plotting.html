@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+
+{% block title %}Análisis: {{ collection_name }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Análisis de Datos: {{ collection_name }}</h1>
+        <a href="{{ back_url }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-2"></i> Volver
+        </a>
+    </div>
+
+    <div class="row">
+        <!-- Configuración del Gráfico -->
+        <div class="col-md-4">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">Configuración de Visualización</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Eje X (Categorías)</label>
+                        <select id="labelField" class="form-select">
+                            {% for col in columns %}
+                            <option value="{{ col }}">{{ col|replace('_', ' ')|title }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Eje Y (Valores)</label>
+                        <select id="valueField" class="form-select" disabled>
+                            <option value="count" selected>Contar registros (Frecuencia)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Tipo de Gráfico</label>
+                        <select id="chartType" class="form-select">
+                            <option value="bar">Barras</option>
+                            <option value="line">Líneas</option>
+                            <option value="pie">Torta (Pie)</option>
+                            <option value="doughnut">Donas (Doughnut)</option>
+                        </select>
+                    </div>
+
+                    <button onclick="updateChart()" class="btn btn-primary w-100">
+                        <i class="fas fa-sync-alt me-2"></i> Actualizar Gráfico
+                    </button>
+                    <button onclick="downloadChart()" class="btn btn-success w-100 mt-2">
+                        <i class="fas fa-download me-2"></i> Descargar Imagen (JPG)
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Visualización -->
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div style="position: relative; height:60vh; width:100%;">
+                        <canvas id="myChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const rawData = {{ data|tojson|safe }};
+    let myChart = null;
+
+    function updateChart() {
+        const labelField = document.getElementById('labelField').value;
+        const selectedYOptions = ['count']; // Solo frecuencia
+        const chartType = document.getElementById('chartType').value;
+
+        const aggregation = {};
+        rawData.forEach(item => {
+            const xVal = item[labelField] || 'Sin Datos';
+            if (!aggregation[xVal]) {
+                aggregation[xVal] = {};
+                selectedYOptions.forEach(y => aggregation[xVal][y] = 0);
+            }
+            
+            selectedYOptions.forEach(y => {
+                if (y === 'count') {
+                    aggregation[xVal][y] += 1;
+                } else {
+                    const num = parseFloat(item[y]);
+                    aggregation[xVal][y] += isNaN(num) ? 0 : num;
+                }
+            });
+        });
+
+        const labels = Object.keys(aggregation);
+        const colors = [
+            { border: 'rgba(54, 162, 235, 1)', bg: 'rgba(54, 162, 235, 0.5)' },
+            { border: 'rgba(255, 99, 132, 1)', bg: 'rgba(255, 99, 132, 0.5)' },
+            { border: 'rgba(255, 206, 86, 1)', bg: 'rgba(255, 206, 86, 0.5)' },
+            { border: 'rgba(75, 192, 192, 1)', bg: 'rgba(75, 192, 192, 0.5)' },
+            { border: 'rgba(153, 102, 255, 1)', bg: 'rgba(153, 102, 255, 0.5)' },
+            { border: 'rgba(255, 159, 64, 1)', bg: 'rgba(255, 159, 64, 0.5)' },
+            { border: 'rgba(199, 199, 199, 1)', bg: 'rgba(199, 199, 199, 0.5)' },
+            { border: 'rgba(83, 102, 255, 1)', bg: 'rgba(83, 102, 255, 0.5)' },
+            { border: 'rgba(40, 167, 69, 1)', bg: 'rgba(40, 167, 69, 0.5)' },
+            { border: 'rgba(220, 53, 69, 1)', bg: 'rgba(220, 53, 69, 0.5)' },
+            { border: 'rgba(23, 162, 184, 1)', bg: 'rgba(23, 162, 184, 0.5)' },
+            { border: 'rgba(255, 193, 7, 1)', bg: 'rgba(255, 193, 7, 0.5)' }
+        ];
+
+        const datasets = selectedYOptions.map((yField, index) => {
+            const color = colors[index % colors.length];
+            // Usar múltiples colores si es gráfico circular o si es de barras con una sola serie
+            const useMultiColor = (chartType === 'pie' || chartType === 'doughnut' || (chartType === 'bar' && selectedYOptions.length === 1));
+
+            return {
+                label: yField === 'count' ? 'FRECUENCIA' : yField.replace(/_/g, ' ').toUpperCase(),
+                data: labels.map(l => aggregation[l][yField]),
+                backgroundColor: useMultiColor ? labels.map((_, i) => colors[i % colors.length].bg) : color.bg,
+                borderColor: useMultiColor ? labels.map((_, i) => colors[i % colors.length].border) : color.border,
+                borderWidth: 2,
+                tension: 0.3
+            };
+        });
+
+        // Generar etiquetas y título coherentes
+        const xLabel = labelField.replace(/_/g, ' ').toUpperCase();
+        const yLabelsText = selectedYOptions.map(y => y === 'count' ? 'FRECUENCIA' : y.replace(/_/g, ' ').toUpperCase());
+        const chartTitle = `${yLabelsText.join(' / ')} POR ${xLabel}`;
+
+        const ctx = document.getElementById('myChart').getContext('2d');
+        if (myChart) myChart.destroy();
+
+        myChart = new Chart(ctx, {
+            type: chartType,
+            data: { labels: labels, datasets: datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: chartTitle,
+                        font: { size: 18, weight: 'bold' },
+                        padding: { top: 10, bottom: 20 }
+                    },
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    }
+                },
+                scales: (chartType === 'bar' || chartType === 'line') ? {
+                    x: {
+                        title: { display: true, text: xLabel, font: { weight: 'bold' } }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: selectedYOptions.length === 1 ? yLabelsText[0] : 'VALORES', font: { weight: 'bold' } }
+                    }
+                } : {}
+            },
+            plugins: [{
+                id: 'custom_canvas_background_color',
+                beforeDraw: (chart) => {
+                    const ctx = chart.canvas.getContext('2d');
+                    ctx.save();
+                    ctx.globalCompositeOperation = 'destination-over';
+                    ctx.fillStyle = 'white';
+                    ctx.fillRect(0, 0, chart.width, chart.height);
+                    ctx.restore();
+                }
+            }]
+        });
+    }
+
+    function downloadChart() {
+        const canvas = document.getElementById('myChart');
+        const link = document.createElement('a');
+        link.download = 'grafico_analisis.jpg';
+        link.href = canvas.toDataURL('image/jpeg', 1.0); // 1.0 = Calidad máxima
+        link.click();
+    }
+
+    document.addEventListener('DOMContentLoaded', updateChart);
+</script>
+{% endblock %}

@@ -1,4 +1,9 @@
- # Elastic Beanstalk Files
+ # Virtual Environment
+.venv/
+venv/
+env/
+
+# Elastic Beanstalk Files
 -.elasticbeanstalk/*
 -.elasticbeanstalk/*.global.yml
 +.elasticbeanstalk/*

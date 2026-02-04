@@ -18,14 +18,24 @@ import os
 from . import director_bp
 from ..auth.utils import director_required
 from .. import mongo, csrf
+from ..auth.utils import role_required
 from ..models.user import User
 from app.utils.timezone_utils import now_chile, format_chile_datetime, chile_to_utc
-from flask import jsonify
+from flask import jsonify, send_file
 from ..models.task import Task
 from unidecode import unidecode  # Asegúrate de tener `unidecode` instalado
+import os
+import pandas as pd
+import re
+from werkzeug.utils import secure_filename
 
 # Agregado al inicio de la función view_stats()
 from collections import defaultdict
+
+@director_bp.app_template_filter('chile_datetime')
+def chile_datetime(value):
+    return format_chile_datetime(value)
+
 
 @director_bp.route('/dashboard')
 @login_required
@@ -93,7 +103,11 @@ def profile():
 @login_required
 @director_required
 def colaborador_list():
-    colaboradores = list(mongo.db.users.find({"role": "colaborador"}))
+    # Ahora mostramos tanto colaboradores como directores para permitir la gestión de permisos
+    colaboradores = list(mongo.db.users.find({
+        "role": {"$in": ["colaborador", "director"]},
+        "_id": {"$ne": ObjectId(current_user.get_id())}
+    }))
     return render_template('director/colaboradores.html', colaboradores=colaboradores)
 
 
@@ -103,7 +117,7 @@ def colaborador_list():
 def colaborador_detail(colaborador_id):
     colaborador_data = mongo.db.users.find_one({
         "_id": ObjectId(colaborador_id),
-        "role": "colaborador"
+        "role": {"$in": ["colaborador", "director"]}
     })
     if not colaborador_data:
         flash('Colaborador no encontrado', 'danger')
@@ -180,7 +194,7 @@ def crear_colaborador():
 def toggle_colaborador_active(colaborador_id):
     colabor = mongo.db.users.find_one({
         "_id": ObjectId(colaborador_id),
-        "role": "colaborador"
+        "role": {"$in": ["colaborador", "director"]}
     })
     if not colabor:
         flash('No encontrado', 'danger')
@@ -202,7 +216,7 @@ def toggle_colaborador_active(colaborador_id):
 def reset_colaborador_password(colaborador_id):
     colabor = mongo.db.users.find_one({
         "_id": ObjectId(colaborador_id),
-        "role": "colaborador"
+        "role": {"$in": ["colaborador", "director"]}
     })
     if not colabor:
         flash('No encontrado', 'danger')
@@ -224,13 +238,13 @@ def reset_colaborador_password(colaborador_id):
 def edit_colaborador(colaborador_id):
     try:
         colabor = mongo.db.users.find_one({"_id": ObjectId(colaborador_id)})
-        if not colabor or colabor.get('role') != 'colaborador':
-            flash('Solo colaboradores', 'danger')
+        if not colabor or colabor.get('role') not in ['colaborador', 'director']:
+            flash('Usuario no encontrado o sin permisos para editar', 'danger')
             return redirect(url_for('director.colaborador_list'))
 
         # Formulario inline
         from flask_wtf import FlaskForm
-        from wtforms import StringField, SubmitField
+        from wtforms import StringField, SubmitField, SelectField, BooleanField
         from wtforms.validators import DataRequired, Email, Optional
 
         class EditForm(FlaskForm):
@@ -240,6 +254,12 @@ def edit_colaborador(colaborador_id):
             telefono = StringField('Teléfono', validators=[Optional()])
             direccion = StringField('Dirección', validators=[Optional()])
             titulos = StringField('Títulos', validators=[Optional()])
+            role = SelectField('Rol/Permisos', choices=[
+                ('colaborador', 'Colaborador (Lectura/Escritura básica)'),
+                ('director', 'Director (Gestión de equipo e iniciativas)')
+            ], validators=[DataRequired()])
+            can_manage_excel = BooleanField('Permiso para gestionar Excel')
+            active = BooleanField('Cuenta Activa')
             submit = SubmitField('Guardar')
 
         form = EditForm()
@@ -251,6 +271,9 @@ def edit_colaborador(colaborador_id):
             form.rut.data = colabor.get('rut', '')
             form.telefono.data = colabor.get('telefono', '')
             form.direccion.data = colabor.get('direccion', '')
+            form.role.data = colabor.get('role', 'colaborador')
+            form.can_manage_excel.data = colabor.get('can_manage_excel', False)
+            form.active.data = colabor.get('active', True)
 
             # Convertir lista a string para el formulario
             if isinstance(colabor.get('titulos', []), list):
@@ -266,7 +289,10 @@ def edit_colaborador(colaborador_id):
                 'rut': form.rut.data,
                 'telefono': form.telefono.data,
                 'direccion': form.direccion.data,
-                'titulos': titulos
+                'titulos': titulos,
+                'role': form.role.data,
+                'can_manage_excel': form.can_manage_excel.data,
+                'active': form.active.data
             }
             res = mongo.db.users.update_one(
                 {"_id": ObjectId(colaborador_id)},
@@ -1700,3 +1726,247 @@ def download_minuta(iniciativa_id):
         print(f"Error al descargar minuta: {traceback.format_exc()}")
         flash(f'Error al descargar minuta: {str(e)}', 'danger')
         return redirect(url_for('director.generate_minuta', iniciativa_id=iniciativa_id))
+
+
+@director_bp.route('/colaboradores/<user_id>/toggle_excel', methods=['POST'])
+@login_required
+@director_required
+def toggle_excel_permission(user_id):
+    """Conmutar el permiso de gestión de Excel para un usuario."""
+    user = mongo.db.users.find_one({"_id": ObjectId(user_id)})
+    if not user:
+        flash('Usuario no encontrado', 'danger')
+        return redirect(url_for('director.colaborador_list'))
+
+    new_status = not user.get('can_manage_excel', False)
+    mongo.db.users.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$set": {"can_manage_excel": new_status}}
+    )
+
+    msg = "Permiso Excel concedido" if new_status else "Permiso Excel revocado"
+    flash(f"{msg} para {user.get('email')}", "success")
+    return redirect(url_for('director.colaborador_list'))
+
+
+@director_bp.route('/upload-excel', methods=['GET', 'POST'])
+@login_required
+@role_required(['director', 'colaborador'])
+def upload_excel():
+    """Subir archivo Excel y convertirlo a una colección MongoDB (Versión Director)."""
+    if current_user.role == 'colaborador' and not getattr(current_user, 'can_manage_excel', False):
+        flash('No tienes permiso para gestionar archivos Excel', 'danger')
+        return redirect(url_for('colaborador.dashboard'))
+
+    from ..admin.forms import ExcelUploadForm
+
+    form = ExcelUploadForm()
+
+    if form.validate_on_submit():
+        try:
+            f = form.excel_file.data
+            filename = secure_filename(f.filename)
+            temp_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+            os.makedirs(os.path.dirname(temp_path), exist_ok=True)
+            f.save(temp_path)
+
+            collection_name = form.collection_name.data
+            target_db = form.target_db.data
+
+            df = pd.read_excel(temp_path)
+            df.columns = [clean_column_name(col) for col in df.columns]
+            documents = df.to_dict('records')
+
+            metadata = {
+                'upload_date': chile_to_utc(now_chile()),
+                'uploaded_by': current_user.get_id(),
+                'original_filename': filename,
+                'column_count': len(df.columns),
+                'row_count': len(df),
+                'columns': list(df.columns),
+                'db_name': target_db
+            }
+
+            db = mongo.db.db_metadata if target_db == 'db_metadata' else mongo.db
+            meta_id = db.excel_imports.insert_one(metadata).inserted_id
+            result = db[collection_name].insert_many(documents)
+
+            db.excel_imports.update_one(
+                {'_id': meta_id},
+                {'$set': {'collection_id': collection_name}}
+            )
+
+            os.remove(temp_path)
+            flash(f'Archivo Excel procesado: {len(result.inserted_ids)} documentos en {collection_name}.', 'success')
+            return redirect(url_for('director.excel_collections'))
+
+        except Exception as e:
+            flash(f'Error al procesar el archivo Excel: {str(e)}', 'danger')
+            if 'temp_path' in locals() and os.path.exists(temp_path):
+                os.remove(temp_path)
+
+    return render_template('director/upload_excel.html', form=form)
+
+
+def clean_column_name(column_name):
+    """Limpia el nombre de la columna para hacerlo compatible con MongoDB."""
+    cleaned = re.sub(r'[^\w\s]', '_', column_name)
+    cleaned = re.sub(r'\s+', '_', cleaned).lower()
+    if cleaned[0].isdigit():
+        cleaned = 'col_' + cleaned
+    return cleaned
+
+
+@director_bp.route('/excel-collections')
+@login_required
+@role_required(['director', 'colaborador'])
+def excel_collections():
+    """Ver las colecciones creadas a partir de archivos Excel (Versión Director)."""
+    if current_user.role == 'colaborador' and not getattr(current_user, 'can_manage_excel', False):
+        flash('No tienes permiso para ver colecciones Excel', 'danger')
+        return redirect(url_for('colaborador.dashboard'))
+    metadata_imports = list(mongo.db.db_metadata.excel_imports.find().sort('upload_date', -1))
+    main_imports = list(mongo.db.excel_imports.find().sort('upload_date', -1))
+    all_imports = metadata_imports + main_imports
+    all_imports.sort(key=lambda x: x.get('upload_date', datetime.min), reverse=True)
+    return render_template('director/excel_collections.html', imports=all_imports)
+
+
+@director_bp.route('/excel-collection/<db_name>/<collection_name>/plot')
+@login_required
+@role_required(['director', 'colaborador'])
+def plot_excel_collection(db_name, collection_name):
+    """Vista para graficar datos de una colección Excel (Versión Director)."""
+    if current_user.role == 'colaborador' and not getattr(current_user, 'can_manage_excel', False):
+        flash('No tienes permiso para ver gráficos de Excel', 'danger')
+        return redirect(url_for('colaborador.dashboard'))
+
+    try:
+        db = mongo.db.db_metadata if db_name == 'db_metadata' else mongo.db
+        documents = list(db[collection_name].find({}, {'_id': 0}))
+        
+        if not documents:
+            flash('No hay datos para graficar', 'warning')
+            return redirect(url_for('director.excel_collections'))
+
+        columns = list(documents[0].keys())
+        return render_template(
+            'shared/excel_plotting.html',
+            db_name=db_name,
+            collection_name=collection_name,
+            data=documents,
+            columns=columns,
+            back_url=url_for('director.excel_collections')
+        )
+    except Exception as e:
+        flash(f'Error al preparar gráficos: {str(e)}', 'danger')
+        return redirect(url_for('director.excel_collections'))
+
+
+@director_bp.route('/excel-collection/<db_name>/<collection_name>')
+@login_required
+@role_required(['director', 'colaborador'])
+def view_excel_collection(db_name, collection_name):
+    """Ver el contenido de una colección Excel (Versión Director)."""
+    if current_user.role == 'colaborador' and not getattr(current_user, 'can_manage_excel', False):
+        flash('No tienes permiso para ver colecciones Excel', 'danger')
+        return redirect(url_for('colaborador.dashboard'))
+
+    try:
+        db = mongo.db.db_metadata if db_name == 'db_metadata' else mongo.db
+        page = request.args.get('page', 1, type=int)
+        per_page = 20
+        skip = (page - 1) * per_page
+
+        # Filtrar documentos que tengan el atributo 'nombre_iniciativa' definido
+        filter_query = {
+            "nombre_iniciativa": {"$exists": True, "$ne": None, "$ne": ""}
+        }
+        
+        total = db[collection_name].count_documents(filter_query)
+        documents = list(db[collection_name].find(filter_query).skip(skip).limit(per_page))
+        columns = list(documents[0].keys()) if documents else []
+
+        pagination = {
+            'page': page,
+            'per_page': per_page,
+            'total': total,
+            'pages': (total + per_page - 1) // per_page
+        }
+
+        return render_template('director/view_excel_collection.html', db_name=db_name, collection_name=collection_name, documents=documents, columns=columns, pagination=pagination)
+    except Exception as e:
+        flash(f'Error al visualizar la colección: {str(e)}', 'danger')
+        return redirect(url_for('director.excel_collections'))
+
+
+@director_bp.route('/excel-collection/<db_name>/<collection_name>/export', methods=['GET'])
+@login_required
+@role_required(['director', 'colaborador'])
+def export_excel_collection(db_name, collection_name):
+    """Exportar la colección Excel filtrando filas sin nombre_iniciativa válido."""
+    if current_user.role == 'colaborador' and not getattr(current_user, 'can_manage_excel', False):
+        flash('No tienes permiso para exportar colecciones Excel', 'danger')
+        return redirect(url_for('colaborador.dashboard'))
+
+    try:
+        db = mongo.db.db_metadata if db_name == 'db_metadata' else mongo.db
+
+        # Obtener todos los documentos que tengan la columna
+        docs = list(db[collection_name].find({"nombre_iniciativa": {"$exists": True}}))
+
+        def valid_nombre(val):
+            s = str(val or '').strip().lower()
+            return s not in ['', 'na', 'n/a', 'nan']
+
+        filtered = []
+        for d in docs:
+            if valid_nombre(d.get('nombre_iniciativa')):
+                d_copy = dict(d)
+                if '_id' in d_copy:
+                    d_copy['__id'] = str(d_copy['_id'])
+                for k, v in list(d_copy.items()):
+                    if isinstance(v, datetime):
+                        d_copy[k] = v.isoformat()
+                filtered.append(d_copy)
+
+        if not filtered:
+            flash('No hay filas válidas para exportar.', 'info')
+            return redirect(url_for('director.view_excel_collection', db_name=db_name, collection_name=collection_name))
+
+        df = pd.DataFrame(filtered)
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False)
+        output.seek(0)
+
+        filename = f"{collection_name}.xlsx"
+        return send_file(
+            output,
+            as_attachment=True,
+            download_name=filename,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+    except Exception as e:
+        flash(f'Error al exportar la colección: {str(e)}', 'danger')
+        return redirect(url_for('director.view_excel_collection', db_name=db_name, collection_name=collection_name))
+
+
+@director_bp.route('/excel-collection/<db_name>/<collection_name>/delete', methods=['POST'])
+@login_required
+@role_required(['director', 'colaborador'])
+def delete_excel_collection(db_name, collection_name):
+    """Eliminar una colección Excel (Versión Director)."""
+    if current_user.role == 'colaborador' and not getattr(current_user, 'can_manage_excel', False):
+        flash('No tienes permiso para eliminar colecciones Excel', 'danger')
+        return redirect(url_for('colaborador.dashboard'))
+
+    try:
+        db = mongo.db.db_metadata if db_name == 'db_metadata' else mongo.db
+        db[collection_name].drop()
+        db.excel_imports.delete_many({'collection_id': collection_name})
+        flash(f'Colección {collection_name} eliminada correctamente.', 'success')
+    except Exception as e:
+        flash(f'Error al eliminar la colección: {str(e)}', 'danger')
+
+    return redirect(url_for('director.excel_collections'))

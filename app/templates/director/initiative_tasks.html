@@ -156,6 +156,8 @@
                 {% endif %}
             </div>
 
+            
+
             <!-- TAREAS COMPLETADAS -->
             <div class="tab-pane fade" id="completed-tasks" role="tabpanel" aria-labelledby="completed-tab">
                 {% if tasks | selectattr('is_completed', 'equalto', true) | list %}

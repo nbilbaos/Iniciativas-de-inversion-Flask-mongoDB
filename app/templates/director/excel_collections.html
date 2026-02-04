@@ -6,65 +6,58 @@
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>Colecciones desde Excel</h1>
-        <a href="{{ url_for('admin.dashboard') }}" class="btn btn-primary">
-            <i class="fas me-2"></i> Volver al Menú
-        </a>
-        <a href="{{ url_for('admin.upload_excel') }}" class="btn btn-primary">
-            <i class="fas fa-file-excel me-2"></i> Subir Nuevo Excel
-        </a>
+        <div>
+            <a href="{{ url_for('director.dashboard') }}" class="btn btn-outline-primary me-2">
+                <i class="fas fa-home me-2"></i> Dashboard
+            </a>
+            <a href="{{ url_for('director.upload_excel') }}" class="btn btn-primary">
+                <i class="fas fa-file-excel me-2"></i> Subir Nuevo Excel
+            </a>
+        </div>
     </div>
 
-    <div class="card">
+    <div class="card shadow-sm">
         <div class="card-header bg-primary text-white">
             <h5 class="mb-0">Colecciones Importadas</h5>
         </div>
         <div class="card-body">
             {% if imports %}
             <div class="table-responsive">
-                <table class="table table-hover table-striped">
+                <table class="table table-hover table-striped align-middle">
                     <thead>
                         <tr>
                             <th>Nombre de Colección</th>
                             <th>Base de Datos</th>
                             <th>Archivo Original</th>
-                            <th>Fecha de Importación</th>
+                            <th>Fecha</th>
                             <th>Filas</th>
-                            <th>Columnas</th>
                             <th>Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for import in imports %}
                         <tr>
-                            <td>{{ import.collection_id }}</td>
-                            <td>
-                                {% if 'db_name' in import %}
-                                    {{ import.db_name }}
-                                {% else %}
-                                    db_metadata
-                                {% endif %}
-                            </td>
-                            <td>{{ import.original_filename }}</td>
+                            <td><strong>{{ import.collection_id }}</strong></td>
+                            <td><span class="badge bg-light text-dark">{{ import.db_name or 'db_metadata' }}</span></td>
+                            <td><small class="text-muted">{{ import.original_filename }}</small></td>
                             <td>{{ import.upload_date.strftime('%d/%m/%Y %H:%M') }}</td>
                             <td>{{ import.row_count }}</td>
-                            <td>{{ import.column_count }}</td>
                             <td>
                                 <div class="btn-group">
-                                    <a href="{{ url_for('admin.view_excel_collection', db_name='db_metadata' if 'db_name' not in import else import.db_name, collection_name=import.collection_id) }}" class="btn btn-sm btn-info">
-                                        <i class="fas fa-eye" title="Ver datos"></i>
+                                    <a href="{{ url_for('director.view_excel_collection', db_name=import.db_name or 'db_metadata', collection_name=import.collection_id) }}" class="btn btn-sm btn-info" title="Ver datos">
+                                        <i class="fas fa-eye"></i>
                                     </a>
-                                    <a href="{{ url_for('admin.plot_excel_collection', db_name='db_metadata' if 'db_name' not in import else import.db_name, collection_name=import.collection_id) }}" class="btn btn-sm btn-success">
-                                        <i class="fas fa-chart-bar" title="Ver gráficos"></i>
+                                    <a href="{{ url_for('director.plot_excel_collection', db_name=import.db_name or 'db_metadata', collection_name=import.collection_id) }}" class="btn btn-sm btn-success" title="Ver gráficos">
+                                        <i class="fas fa-chart-bar"></i>
                                     </a>
-                                    <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ loop.index }}">
-                                        <i class="fas fa-trash" title="Eliminar"></i>
+                                    <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ loop.index }}" title="Eliminar">
+                                        <i class="fas fa-trash"></i>
                                     </button>
-
                                 </div>
                             </td>
                         </tr>
                         
-                        <!-- Modal de confirmación para eliminar -->
+                        <!-- Modal de confirmación -->
                         <div class="modal fade" id="deleteModal{{ loop.index }}" tabindex="-1" aria-hidden="true">
                             <div class="modal-dialog">
                                 <div class="modal-content">
@@ -73,12 +66,12 @@
                                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                     </div>
                                     <div class="modal-body">
-                                        <p>¿Estás seguro de que deseas eliminar la colección <strong>{{ import.collection_id }}</strong>?</p>
-                                        <p class="text-danger">Esta acción no se puede deshacer y todos los datos se perderán.</p>
+                                        <p>¿Estás seguro de que deseas eliminar <strong>{{ import.collection_id }}</strong>?</p>
+                                        <p class="text-danger small">Esta acción es irreversible.</p>
                                     </div>
                                     <div class="modal-footer">
                                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                        <form action="{{ url_for('admin.delete_excel_collection', db_name='db_metadata' if 'db_name' not in import else import.db_name, collection_name=import.collection_id) }}" method="POST">
+                                        <form action="{{ url_for('director.delete_excel_collection', db_name=import.db_name or 'db_metadata', collection_name=import.collection_id) }}" method="POST">
                                             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                             <button type="submit" class="btn btn-danger">Eliminar</button>
                                         </form>
@@ -91,9 +84,9 @@
                 </table>
             </div>
             {% else %}
-            <div class="alert alert-info">
-                <i class="fas fa-info-circle me-2"></i> No hay colecciones importadas aún.
-                <a href="{{ url_for('admin.upload_excel') }}" class="alert-link">Subir un archivo Excel</a>.
+            <div class="alert alert-info mb-0">
+                <i class="fas fa-info-circle me-2"></i> No hay colecciones importadas.
+                <a href="{{ url_for('director.upload_excel') }}" class="alert-link">Importar ahora</a>.
             </div>
             {% endif %}
         </div>

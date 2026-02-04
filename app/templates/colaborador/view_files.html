@@ -83,10 +83,31 @@
                 <div class="card-body">
                     {% if files_enabled %}
                         <!-- Formulario de carga de archivos -->
-                        <div class="mb-4">
-                            <h6>Subir archivo</h6>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <nav aria-label="breadcrumb">
+                                <ol class="breadcrumb mb-0">
+                                    <li class="breadcrumb-item">
+                                        <a href="{{ url_for('colaborador.view_files', iniciativa_id=iniciativa_id) }}">
+                                            <i class="fas fa-home"></i> Inicio
+                                        </a>
+                                    </li>
+                                    {% for crumb in breadcrumbs %}
+                                    <li class="breadcrumb-item active">
+                                        <a href="{{ url_for('colaborador.view_files', iniciativa_id=iniciativa_id, folder_id=crumb.id) }}">
+                                            {{ crumb.name }}
+                                        </a>
+                                    </li>
+                                    {% endfor %}
+                                </ol>
+                            </nav>
+                            <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#createFolderModal">
+                                <i class="fas fa-folder-plus"></i> Nueva Carpeta
+                            </button>
+                        </div>
+                        <div class="mb-4 p-3 bg-light rounded">
                             <form method="POST" action="{{ url_for('colaborador.upload_file', iniciativa_id=iniciativa_id) }}" enctype="multipart/form-data">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                <input type="hidden" name="folder_id" value="{{ current_folder._id if current_folder else '' }}">
                                 <div class="row g-3">
                                     <div class="col-md-6">
                                         <label for="file" class="form-label">Seleccionar archivo</label>
@@ -109,9 +130,34 @@
                         <hr>
 
                         <!-- Lista de archivos -->
-                        {% if files %}
-                            <h6 class="mb-3">Archivos disponibles</h6>
+                        {% if files or folders %}
                             <div class="row">
+                                <!-- Carpetas -->
+                                {% for folder in folders %}
+                                <div class="col-md-4 col-sm-6 mb-4">
+                                    <div class="card file-card h-100 border-warning">
+                                        <div class="card-body text-center">
+                                            <a href="{{ url_for('colaborador.view_files', iniciativa_id=iniciativa_id, folder_id=folder._id) }}" class="text-decoration-none text-dark">
+                                                <div class="file-icon text-warning">
+                                                    <i class="fas fa-folder"></i>
+                                                </div>
+                                                <h6 class="card-title">{{ folder.name }}</h6>
+                                            </a>
+                                            <div class="file-card-actions mt-2">
+                                                <form method="POST" action="{{ url_for('colaborador.delete_folder', iniciativa_id=iniciativa_id, folder_id=folder._id) }}" 
+                                                      onsubmit="return confirm('¿Estás seguro? Se borrará todo el contenido.');">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                                    <button type="submit" class="btn btn-sm btn-danger" title="Eliminar">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                                
+                                <!-- Archivos -->
                                 {% for file in files %}
                                     <div class="col-md-4 col-sm-6 mb-4">
                                         <div class="card file-card h-100">
@@ -222,7 +268,7 @@
                             </div>
                         {% else %}
                             <div class="alert alert-info">
-                                <i class="fas fa-info-circle me-2"></i> No hay archivos disponibles para esta iniciativa.
+                                <i class="fas fa-info-circle me-2"></i> Carpeta vacía.
                             </div>
                         {% endif %}
                     {% else %}
@@ -285,6 +331,29 @@
                     </ul>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Crear Carpeta -->
+<div class="modal fade" id="createFolderModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Nueva Carpeta</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('colaborador.create_folder', iniciativa_id=iniciativa_id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="parent_id" value="{{ current_folder._id if current_folder else '' }}">
+                <div class="modal-body">
+                    <label class="form-label">Nombre de la carpeta</label>
+                    <input type="text" class="form-control" name="name" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">Crear</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>

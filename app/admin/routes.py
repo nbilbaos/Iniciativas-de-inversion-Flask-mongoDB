@@ -15,7 +15,8 @@ import pandas as pd
 import os
 from werkzeug.utils import secure_filename
 from datetime import datetime
-from flask import current_app
+from flask import current_app, send_file
+from io import BytesIO
 
 @admin_bp.route('/dashboard')
 @login_required
@@ -232,6 +233,7 @@ def edit_user(user_id):
             direccion = StringField('Dirección', validators=[Optional()])
             titulos = StringField('Títulos (separados por coma)', validators=[Optional()])
             active = BooleanField('Usuario Activo')
+            can_manage_excel = BooleanField('Permiso Excel')
             submit = SubmitField('Guardar Cambios')
 
         form = UserEditForm()
@@ -246,6 +248,7 @@ def edit_user(user_id):
             form.direccion.data = user_data.get('direccion', '')
             form.titulos.data = user_data.get('titulos', '')
             form.active.data = user_data.get('active', True)
+            form.can_manage_excel.data = user_data.get('can_manage_excel', False)
 
         # Procesar el envío del formulario
         if form.validate_on_submit():
@@ -263,7 +266,8 @@ def edit_user(user_id):
                 'role': form.role.data,
                 'direccion': form.direccion.data,
                 'titulos': form.titulos.data,
-                'active': form.active.data
+                'active': form.active.data,
+                'can_manage_excel': form.can_manage_excel.data
             }
 
             # Actualizar en la base de datos
@@ -310,7 +314,7 @@ def upload_excel():
             target_db = form.target_db.data
 
             # Leer el archivo Excel con pandas
-            df = pd.read_excel(temp_path, dtype=str)  # Usar dtype=str para manejar todo como texto inicialmente
+            df = pd.read_excel(temp_path)  # Permitir que pandas infiera tipos (numéricos, fechas, etc.)
 
             # Limpiar nombres de columnas (quitar espacios, caracteres especiales)
             df.columns = [clean_column_name(col) for col in df.columns]
@@ -391,6 +395,38 @@ def excel_collections():
 
     return render_template('admin/excel_collections.html', imports=all_imports)
 
+# GRAFICOS
+@admin_bp.route('/excel-collection/<db_name>/<collection_name>/plot')
+@login_required
+@admin_required
+def plot_excel_collection(db_name, collection_name):
+    """Vista para graficar datos de una colección Excel."""
+    try:
+        db = mongo.db.db_metadata if db_name == 'db_metadata' else mongo.db
+        
+        # Obtenemos todos los documentos para graficar (sin paginación para el gráfico)
+        documents = list(db[collection_name].find({}, {'_id': 0}))
+        
+        if not documents:
+            flash('No hay datos para graficar', 'warning')
+            return redirect(url_for('admin.excel_collections'))
+
+        # Obtenemos las columnas disponibles para que el usuario elija qué graficar
+        columns = list(documents[0].keys())
+
+        # Renderizamos la plantilla COMPARTIDA
+        return render_template(
+            'shared/excel_plotting.html',
+            db_name=db_name,
+            collection_name=collection_name,
+            data=documents,
+            columns=columns,
+            back_url=url_for('admin.excel_collections')
+        )
+    except Exception as e:
+        flash(f'Error al preparar gráficos: {str(e)}', 'danger')
+        return redirect(url_for('admin.excel_collections'))
+# FIN GRAFICOS
 
 @admin_bp.route('/excel-collection/<db_name>/<collection_name>')
 @login_required
@@ -409,8 +445,13 @@ def view_excel_collection(db_name, collection_name):
         per_page = 20
         skip = (page - 1) * per_page
 
-        total = db[collection_name].count_documents({})
-        documents = list(db[collection_name].find().skip(skip).limit(per_page))
+        # Filtrar documentos que tengan el atributo 'nombre_iniciativa' definido
+        filter_query = {
+            "nombre_iniciativa": {"$exists": True, "$ne": None, "$ne": ""}
+        }
+        
+        total = db[collection_name].count_documents(filter_query)
+        documents = list(db[collection_name].find(filter_query).skip(skip).limit(per_page))
 
         # Obtener los nombres de las columnas
         if documents:
@@ -436,6 +477,54 @@ def view_excel_collection(db_name, collection_name):
     except Exception as e:
         flash(f'Error al visualizar la colección: {str(e)}', 'danger')
         return redirect(url_for('admin.excel_collections'))
+
+
+@admin_bp.route('/excel-collection/<db_name>/<collection_name>/export', methods=['GET'])
+@login_required
+@admin_required
+def export_excel_collection(db_name, collection_name):
+    """Exportar la colección Excel filtrando filas sin nombre_iniciativa válido."""
+    try:
+        db = mongo.db.db_metadata if db_name == 'db_metadata' else mongo.db
+
+        # Buscar documentos que tengan la columna (existencia)
+        docs = list(db[collection_name].find({"nombre_iniciativa": {"$exists": True}}))
+
+        def valid_nombre(val):
+            s = str(val or '').strip().lower()
+            return s not in ['', 'na', 'n/a', 'nan']
+
+        filtered = []
+        for d in docs:
+            if valid_nombre(d.get('nombre_iniciativa')):
+                d_copy = dict(d)
+                if '_id' in d_copy:
+                    d_copy['_id'] = str(d_copy['_id'])
+                for k, v in list(d_copy.items()):
+                    if isinstance(v, datetime):
+                        d_copy[k] = v.isoformat()
+                filtered.append(d_copy)
+
+        if not filtered:
+            flash('No hay filas válidas para exportar.', 'info')
+            return redirect(url_for('admin.view_excel_collection', db_name=db_name, collection_name=collection_name))
+
+        df = pd.DataFrame(filtered)
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False)
+        output.seek(0)
+
+        filename = f"{collection_name}.xlsx"
+        return send_file(
+            output,
+            as_attachment=True,
+            download_name=filename,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+    except Exception as e:
+        flash(f'Error al exportar la colección: {str(e)}', 'danger')
+        return redirect(url_for('admin.view_excel_collection', db_name=db_name, collection_name=collection_name))
 
 
 @admin_bp.route('/excel-collection/<db_name>/<collection_name>/delete', methods=['POST'])

@@ -30,6 +30,8 @@
                             <th>Email</th>
                             <th>RUT</th>
                             <th>Teléfono</th>
+                            <th>Rol</th>
+                            <th>Excel</th>
                             <th>Estado</th>
                             <th>Especialidad</th>
                             <th>Acciones</th>
@@ -42,6 +44,22 @@
                             <td>{{ colaborador.email }}</td>
                             <td>{{ colaborador.rut if colaborador.rut else "-" }}</td>
                             <td>{{ colaborador.telefono if colaborador.telefono else "-" }}</td>
+                            <td>
+                                {% if colaborador.role == 'director' %}
+                                <span class="badge bg-warning text-dark"><i class="fas fa-user-tie me-1"></i> Director</span>
+                                {% else %}
+                                <span class="badge bg-light text-dark"><i class="fas fa-user me-1"></i> Colaborador</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <form action="{{ url_for('director.toggle_excel_permission', user_id=colaborador._id) }}" method="POST">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                    <button type="submit" class="btn btn-sm {{ 'btn-success' if colaborador.can_manage_excel else 'btn-outline-secondary' }}" 
+                                            title="{{ 'Revocar permiso Excel' if colaborador.can_manage_excel else 'Delegar permiso Excel' }}">
+                                        <i class="fas fa-file-excel"></i>
+                                    </button>
+                                </form>
+                            </td>
                             <td>
                                 {% if colaborador.active %}
                                 <span class="badge bg-success">Activo</span>

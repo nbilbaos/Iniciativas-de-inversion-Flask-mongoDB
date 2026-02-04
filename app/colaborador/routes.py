@@ -1,3 +1,4 @@
+
 #app/colaborador/routes.py
 from flask import render_template, redirect, url_for, flash, request, current_app
 from flask_login import login_required, current_user
@@ -715,7 +716,7 @@ def workbench(iniciativa_id):
         # Obtener tareas relacionadas con esta iniciativa
         tasks = list(mongo.db.tasks.find({"initiative_id": iniciativa_id}).sort("created_at", -1))
 
-        # Obtener archivos relacionados con esta iniciativa - NUEVO
+        # Obtener archivos relacionados con esta iniciativa
         files = list(mongo.db.files.find({
             "initiative_id": iniciativa_id,
             "active": True
@@ -1475,3 +1476,112 @@ def download_minuta(iniciativa_id):
     except Exception as e:
         flash(f'Error al descargar minuta: {str(e)}', 'danger')
         return redirect(url_for('colaborador.generate_minuta', iniciativa_id=iniciativa_id))
+
+
+# --- GESTIÓN DE ARCHIVOS Y CARPETAS (COLABORADOR) ---
+
+@colaborador_bp.route('/iniciativas/<iniciativa_id>/archivos', defaults={'folder_id': None})
+@colaborador_bp.route('/iniciativas/<iniciativa_id>/archivos/<folder_id>')
+@login_required
+@role_required(['colaborador'])
+def view_files(iniciativa_id, folder_id):
+    """Ver archivos y carpetas de la iniciativa."""
+    # Verificar acceso
+    user = mongo.db.users.find_one({"_id": ObjectId(current_user.get_id())})
+    has_access = False
+    for iniciativa in user.get('iniciativas', []):
+        if iniciativa.get('initiative_id') == iniciativa_id and iniciativa.get('active', True):
+            has_access = True
+            break
+    
+    if not has_access:
+        flash('No tienes acceso a esta iniciativa', 'danger')
+        return redirect(url_for('colaborador.dashboard'))
+
+    # Obtener iniciativa
+    collection_name = current_app.config['INITIATIVES_COLLECTION']
+    parts = collection_name.split('.')
+    coll = mongo.db[parts[0]][parts[1]] if len(parts) > 1 else mongo.db[collection_name]
+    iniciativa = coll.find_one({"_id": ObjectId(iniciativa_id)})
+
+    # Obtener carpetas y archivos
+    folders = list(mongo.db.folders.find({
+        "initiative_id": iniciativa_id,
+        "parent_id": folder_id if folder_id and folder_id != 'None' else None
+    }).sort("name", 1))
+
+    files = list(mongo.db.files.find({
+        "initiative_id": iniciativa_id,
+        "folder_id": folder_id if folder_id and folder_id != 'None' else None,
+        "active": True
+    }).sort("uploaded_at", -1))
+
+    # Breadcrumbs
+    breadcrumbs = []
+    current_folder = None
+    if folder_id and ObjectId.is_valid(folder_id):
+        current_folder = mongo.db.folders.find_one({"_id": ObjectId(folder_id)})
+        temp_id = folder_id
+        while temp_id:
+            folder = mongo.db.folders.find_one({"_id": ObjectId(temp_id)}) if ObjectId.is_valid(temp_id) else None
+            if folder:
+                breadcrumbs.insert(0, {"id": str(folder["_id"]), "name": folder["name"]})
+                temp_id = folder.get("parent_id")
+            else:
+                break
+
+    return render_template(
+        'colaborador/view_files.html',
+        iniciativa=iniciativa,
+        iniciativa_id=iniciativa_id,
+        folders=folders,
+        files=files,
+        current_folder=current_folder,
+        breadcrumbs=breadcrumbs,
+        files_enabled=iniciativa.get('files_enabled', True)
+    )
+
+@colaborador_bp.route('/iniciativas/<iniciativa_id>/crear-carpeta', methods=['POST'])
+@login_required
+@role_required(['colaborador'])
+def create_folder(iniciativa_id):
+    name = request.form.get('name')
+    parent_id = request.form.get('parent_id')
+    if not parent_id or parent_id == 'None' or parent_id == '':
+        parent_id = None
+    
+    if name:
+        mongo.db.folders.insert_one({
+            "name": name,
+            "initiative_id": iniciativa_id,
+            "parent_id": parent_id,
+            "created_by": current_user.get_id(),
+            "created_at": chile_to_utc(now_chile())
+        })
+        flash('Carpeta creada', 'success')
+    
+    # Redirigir dinámicamente según el origen
+    dest = 'colaborador.workbench' if 'workbench' in request.referrer else 'colaborador.view_files'
+    return redirect(url_for(dest, iniciativa_id=iniciativa_id, folder_id=parent_id))
+
+@colaborador_bp.route('/iniciativas/<iniciativa_id>/borrar-carpeta/<folder_id>', methods=['POST'])
+@login_required
+@role_required(['colaborador'])
+def delete_folder(iniciativa_id, folder_id):
+    def delete_recursive(fid):
+        subfolders = mongo.db.folders.find({"parent_id": fid})
+        for sub in subfolders:
+            delete_recursive(str(sub["_id"]))
+        files = mongo.db.files.find({"folder_id": fid})
+        for f in files:
+            if f.get('file_path') and os.path.exists(f['file_path']):
+                try: os.remove(f['file_path'])
+                except: pass
+            mongo.db.files.delete_one({"_id": f["_id"]})
+        mongo.db.folders.delete_one({"_id": ObjectId(fid)})
+
+    parent_folder = mongo.db.folders.find_one({"_id": ObjectId(folder_id)})
+    parent_id = parent_folder.get("parent_id") if parent_folder else None
+    delete_recursive(folder_id)
+    flash('Carpeta eliminada', 'success')
+    return redirect(url_for('colaborador.view_files', iniciativa_id=iniciativa_id, folder_id=parent_id))

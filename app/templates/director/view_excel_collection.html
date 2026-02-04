@@ -4,16 +4,8 @@
 
 {% block extra_css %}
 <style>
-    .table th, .table td {
-        white-space: nowrap;
-        padding: 10px 15px !important;
-    }
-    .top-scrollbar-wrapper {
-        overflow-x: auto;
-        overflow-y: hidden;
-        height: 15px;
-        margin-bottom: 5px;
-    }
+    .table th, .table td { white-space: nowrap; padding: 10px 15px !important; }
+    .top-scrollbar-wrapper { overflow-x: auto; overflow-y: hidden; height: 15px; margin-bottom: 5px; }
 </style>
 {% endblock %}
 
@@ -22,24 +14,19 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>Colección: {{ collection_name }}</h1>
         <div>
-            <a href="{{ url_for('admin.excel_collections') }}" class="btn btn-secondary">
+            <a href="{{ url_for('director.excel_collections') }}" class="btn btn-secondary">
                 <i class="fas fa-arrow-left me-2"></i> Volver
             </a>
-            <a href="{{ url_for('admin.export_excel_collection', db_name=db_name, collection_name=collection_name) }}" class="btn btn-success ms-2">
+            <a href="{{ url_for('director.export_excel_collection', db_name=db_name, collection_name=collection_name) }}" class="btn btn-success ms-2">
                 <i class="fas fa-file-excel me-2"></i> Exportar Excel
             </a>
-        </div>
+        </div>  
     </div>
 
-    <div class="card">
-        <div class="card-header bg-primary text-white">
-            <div class="d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Datos de la Colección</h5>
-                <div>
-                    <span class="badge bg-light text-dark">Base de datos: {{ db_name }}</span>
-                    <span class="badge bg-light text-dark">Total: {{ pagination.total }} documentos</span>
-                </div>
-            </div>
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Datos de la Colección</h5>
+            <span class="badge bg-light text-dark">Total: {{ pagination.total }}</span>
         </div>
         <div class="card-body">
             {% if documents %}
@@ -69,28 +56,23 @@
                 </table>
             </div>
             
-            <!-- Paginación -->
-            <nav aria-label="Paginación de colección">
+            <nav class="mt-4">
                 <ul class="pagination justify-content-center">
-                    <li class="page-item {{ 'disabled' if pagination.page == 1 else '' }}">
-                        <a class="page-link" href="{{ url_for('admin.view_excel_collection', db_name=db_name, collection_name=collection_name, page=pagination.page-1) if pagination.page > 1 else '#' }}">Anterior</a>
+                    <li class="page-item {{ 'disabled' if pagination.page == 1 }}">
+                        <a class="page-link" href="{{ url_for('director.view_excel_collection', db_name=db_name, collection_name=collection_name, page=pagination.page-1) }}">Anterior</a>
                     </li>
-                    
-                    {% for page in range(1, pagination.pages + 1) %}
-                    <li class="page-item {{ 'active' if page == pagination.page else '' }}">
-                        <a class="page-link" href="{{ url_for('admin.view_excel_collection', db_name=db_name, collection_name=collection_name, page=page) }}">{{ page }}</a>
+                    {% for p in range(1, pagination.pages + 1) %}
+                    <li class="page-item {{ 'active' if p == pagination.page }}">
+                        <a class="page-link" href="{{ url_for('director.view_excel_collection', db_name=db_name, collection_name=collection_name, page=p) }}">{{ p }}</a>
                     </li>
                     {% endfor %}
-                    
-                    <li class="page-item {{ 'disabled' if pagination.page == pagination.pages else '' }}">
-                        <a class="page-link" href="{{ url_for('admin.view_excel_collection', db_name=db_name, collection_name=collection_name, page=pagination.page+1) if pagination.page < pagination.pages else '#' }}">Siguiente</a>
+                    <li class="page-item {{ 'disabled' if pagination.page == pagination.pages }}">
+                        <a class="page-link" href="{{ url_for('director.view_excel_collection', db_name=db_name, collection_name=collection_name, page=pagination.page+1) }}">Siguiente</a>
                     </li>
                 </ul>
             </nav>
             {% else %}
-            <div class="alert alert-info">
-                <i class="fas fa-info-circle me-2"></i> Esta colección no contiene documentos.
-            </div>
+            <div class="alert alert-info">No hay documentos.</div>
             {% endif %}
         </div>
     </div>
@@ -105,20 +87,17 @@
         const tableContainer = document.querySelector('.table-responsive');
         const table = tableContainer.querySelector('table');
 
-        // Función para igualar el ancho del slider superior con el de la tabla
         function syncWidth() {
-            content.style.width = table.scrollWidth + 'px';
+            if (table) content.style.width = table.scrollWidth + 'px';
         }
 
         syncWidth();
         window.addEventListener('resize', syncWidth);
 
-        // Sincronizar el scroll de arriba hacia abajo
         wrapper.addEventListener('scroll', function() {
             tableContainer.scrollLeft = wrapper.scrollLeft;
         });
 
-        // Sincronizar el scroll de abajo hacia arriba
         tableContainer.addEventListener('scroll', function() {
             wrapper.scrollLeft = tableContainer.scrollLeft;
         });

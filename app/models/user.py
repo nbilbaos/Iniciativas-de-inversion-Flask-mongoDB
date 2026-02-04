@@ -10,7 +10,7 @@ class User(UserMixin):
                  nombre=None, rut=None, direccion=None, telefono=None,
                  titulos=None, iniciativas=None, profile_image=None,
                  cargo=None, area_especializacion=None, certificaciones=None,
-                 idiomas=None, **kwargs):
+                 idiomas=None, can_manage_excel=False, **kwargs):
         self._id = _id if _id else ObjectId()
         self.email = email
         self.password = password
@@ -32,6 +32,8 @@ class User(UserMixin):
         self.area_especializacion = area_especializacion or ""  # Área de especialización
         self.certificaciones = certificaciones or []  # Lista de certificaciones
         self.idiomas = idiomas or []  # Lista de idiomas que maneja
+
+        self.can_manage_excel = can_manage_excel
 
         # Iniciativas asignadas (solo para colaboradores)
         # Lista de diccionarios con formato:
@@ -85,7 +87,8 @@ class User(UserMixin):
             'cargo': self.cargo,
             'area_especializacion': self.area_especializacion,
             'certificaciones': self.certificaciones,
-            'idiomas': self.idiomas
+            'idiomas': self.idiomas,
+            'can_manage_excel': self.can_manage_excel
         }
 
     def add_iniciativa(self, iniciativa_id, collection_name, assigned_by):

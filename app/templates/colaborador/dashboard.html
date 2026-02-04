@@ -450,6 +450,32 @@
                         </div>
                     </a>
                     
+                    {% if current_user.can_manage_excel %}
+                    <a href="{{ url_for('director.upload_excel') }}" class="d-block text-decoration-none text-dark">
+                        <div class="quick-action bg-light">
+                            <div class="quick-action-icon text-success">
+                                <i class="fas fa-file-excel"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-0">Importar Excel</h6>
+                                <small class="text-muted">Subir nuevas planillas</small>
+                            </div>
+                        </div>
+                    </a>
+                    
+                    <a href="{{ url_for('director.excel_collections') }}" class="d-block text-decoration-none text-dark">
+                        <div class="quick-action bg-light">
+                            <div class="quick-action-icon text-info">
+                                <i class="fas fa-table"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-0">Colecciones Excel</h6>
+                                <small class="text-muted">Ver datos importados</small>
+                            </div>
+                        </div>
+                    </a>
+                    {% endif %}
+                    
                     <a href="{{ url_for('auth.change_password') }}" class="d-block text-decoration-none text-dark">
                         <div class="quick-action bg-light">
                             <div class="quick-action-icon text-danger">
