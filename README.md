@@ -37,11 +37,12 @@ source venv/bin/activate
 pip install -r requirements.txt
 
 ## Iniciar MongoDB (puede variar según tu sistema)
-sudo systemctl start mongod    # En Linux
-brew services start mongodb    # En macOS con Homebrew
+* sudo systemctl start mongod    # En Linux
+* brew services start mongodb    # En macOS con Homebrew
 
 ## Ejecucion
 python run.py
 
 └── run.py                    # Script para ejecutar la aplicación
+
 
