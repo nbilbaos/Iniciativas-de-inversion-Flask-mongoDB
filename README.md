@@ -22,7 +22,7 @@ Esta es una aplicación web desarrollada con Flask y MongoDB que incluye un sist
 1. Clona este repositorio:
    ```bash
    git clone [https://github.com/tu-usuario/flask-mongodb-app.git](https://github.com/tu-usuario/flask-mongodb-app.git)
-   cd flask-mongodb-app
+   cd Iniciativas-de-inversion-Flask-mongoDB
 
 ## Crear entorno virtual para las dependecias (requiere instalar venv con pip)
 python -m venv venv
@@ -44,5 +44,6 @@ pip install -r requirements.txt
 python run.py
 
 └── run.py                    # Script para ejecutar la aplicación
+
 
 
