@@ -391,7 +391,7 @@ def list_initiatives():
 
 @director_bp.route('/iniciativas/<iniciativa_id>')
 @login_required
-@director_required
+@role_required(['colaborador','director'])
 def view_initiative(iniciativa_id):
     try:
         collection_name = current_app.config['INITIATIVES_COLLECTION']
