@@ -894,6 +894,157 @@ def cambiar_estado_iniciativa(iniciativa_id):
         return redirect(url_for('director.view_initiative', iniciativa_id=iniciativa_id))
 
 
+@director_bp.route('/iniciativas/<iniciativa_id>/gantt')
+@login_required
+@role_required(['colaborador','director'])
+def gantt(iniciativa_id):
+    """Vista de la Carta Gantt para una iniciativa. Permite visualización a colaboradores y edición a director."""
+    try:
+        collection_name = current_app.config['INITIATIVES_COLLECTION']
+        parts = collection_name.split('.')
+        if len(parts) > 1:
+            coll = mongo.db[parts[0]][parts[1]]
+        else:
+            coll = mongo.db[collection_name]
+
+        iniciativa = coll.find_one({"_id": ObjectId(iniciativa_id)})
+        if not iniciativa:
+            flash('Iniciativa no encontrada', 'danger')
+            return redirect(url_for('director.list_initiatives'))
+
+        # Obtener archivos asociados a la iniciativa
+        files = list(mongo.db.files.find({
+            "initiative_id": iniciativa_id,
+            "active": True
+        }).sort("uploaded_at", -1))
+
+        # Enriquecer archivos con información del usuario que los subió
+        for file in files:
+            if file.get('uploaded_by'):
+                try:
+                    user = mongo.db.users.find_one({"_id": ObjectId(file['uploaded_by'])})
+                    if user:
+                        # Prioridad: nombre completo > email > ID
+                        file['uploaded_by_name'] = user.get('full_name') or user.get('email') or file['uploaded_by']
+                    else:
+                        file['uploaded_by_name'] = file['uploaded_by']
+                except Exception:
+                    file['uploaded_by_name'] = file['uploaded_by']
+            else:
+                file['uploaded_by_name'] = '-'
+
+        # Obtener estados guardados de la Carta Gantt
+        gantt_data = mongo.db.gantt_states.find_one({"initiative_id": iniciativa_id})
+        gantt_states = gantt_data.get('states', {}) if gantt_data else {}
+        # Obtener número de años (por defecto 3)
+        num_years = gantt_data.get('num_years', 3) if gantt_data else 3
+
+        # Determinar si el usuario puede editar (solo director)
+        try:
+            is_director = current_user.is_director()
+        except Exception:
+            is_director = getattr(current_user, 'role', '') == 'director'
+
+        return render_template('director/gantt.html', iniciativa=iniciativa, files=files, is_director=is_director, 
+                             iniciativa_id=iniciativa_id, gantt_states=gantt_states, num_years=num_years)
+    except Exception as e:
+        import traceback
+        print(f"Error al cargar Gantt: {traceback.format_exc()}")
+        flash(f'Error al cargar Carta Gantt: {e}', 'danger')
+        return redirect(url_for('director.view_initiative', iniciativa_id=iniciativa_id))
+
+
+@director_bp.route('/iniciativas/<iniciativa_id>/gantt/save', methods=['POST'])
+@login_required
+@director_required
+def save_gantt_data(iniciativa_id):
+    """Guardar los estados de las celdas de la Carta Gantt."""
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'success': False, 'message': 'No data provided'}), 400
+
+        # Actualizar o insertar los estados en la base de datos
+        mongo.db.gantt_states.update_one(
+            {"initiative_id": iniciativa_id},
+            {
+                "$set": {
+                    "initiative_id": iniciativa_id,
+                    "states": data,
+                    "last_updated_by": current_user.get_id(),
+                    "last_updated_by_email": current_user.email,
+                    "last_updated_at": chile_to_utc(now_chile())
+                }
+            },
+            upsert=True
+        )
+
+        # Registrar en historial
+        history_entry = {
+            "initiative_id": iniciativa_id,
+            "type": "gantt_update",
+            "user_id": current_user.get_id(),
+            "user_email": current_user.email,
+            "timestamp": chile_to_utc(now_chile()),
+            "details": f"Actualización de Carta Gantt"
+        }
+        mongo.db.modification_history.insert_one(history_entry)
+
+        return jsonify({'success': True, 'message': 'Cambios guardados correctamente'}), 200
+
+    except Exception as e:
+        import traceback
+        print(f"Error al guardar Gantt: {traceback.format_exc()}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@director_bp.route('/iniciativas/<iniciativa_id>/gantt/add-year', methods=['POST'])
+@login_required
+@director_required
+def add_gantt_year(iniciativa_id):
+    """Agregar un año a la Carta Gantt."""
+    try:
+        data = request.get_json()
+        new_num_years = data.get('num_years', 3)
+        
+        if not isinstance(new_num_years, int) or new_num_years < 1 or new_num_years > 20:
+            return jsonify({'success': False, 'message': 'Número de años inválido (debe estar entre 1 y 20)'}), 400
+
+        # Actualizar número de años en gantt_states
+        mongo.db.gantt_states.update_one(
+            {"initiative_id": iniciativa_id},
+            {
+                "$set": {
+                    "initiative_id": iniciativa_id,
+                    "num_years": new_num_years,
+                    "last_updated_by": current_user.get_id(),
+                    "last_updated_by_email": current_user.email,
+                    "last_updated_at": chile_to_utc(now_chile())
+                }
+            },
+            upsert=True
+        )
+
+        # Registrar en historial
+        history_entry = {
+            "initiative_id": iniciativa_id,
+            "type": "gantt_add_year",
+            "user_id": current_user.get_id(),
+            "user_email": current_user.email,
+            "timestamp": chile_to_utc(now_chile()),
+            "details": f"Añadido año a Carta Gantt. Total años: {new_num_years}"
+        }
+        mongo.db.modification_history.insert_one(history_entry)
+
+        return jsonify({'success': True, 'message': f'Año añadido. Total: {new_num_years} años', 'num_years': new_num_years}), 200
+
+    except Exception as e:
+        import traceback
+        print(f"Error al agregar año a Gantt: {traceback.format_exc()}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
 @director_bp.route('/iniciativas/actualizar-masivo', methods=['POST'])
 @login_required
 @director_required

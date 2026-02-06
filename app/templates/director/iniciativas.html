@@ -141,8 +141,12 @@
                                    class="btn btn-sm btn-info" title="Ver detalles">
                                     <i class="fas fa-eye"></i>
                                 </a>
+                                <a href="{{ url_for('director.gantt', iniciativa_id=iniciativa._id) }}"
+                                   class="btn btn-sm btn-warning" title="Carta Gantt">
+                                    <i class="fas fa-chart-bar"></i>
+                                </a>
                                 <a href="{{ url_for('director.edit_initiative', iniciativa_id=iniciativa._id) }}"
-                                   class="btn btn-sm btn-warning" title="Editar">
+                                   class="btn btn-sm btn-info" title="Editar">
                                     <i class="fas fa-edit"></i>
                                 </a>
                                 <button class="btn btn-sm btn-secondary"
@@ -230,6 +234,45 @@
                 <i class="fas fa-info-circle me-2"></i> No se encontraron iniciativas con los filtros seleccionados.
             </div>
             {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Leyenda de Colores para Carta Gantt -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card bg-light">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-paint-brush me-2"></i>Referencia: Estados en Carta Gantt</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="d-flex align-items-center mb-2">
+                            <div style="width: 20px; height: 20px; background-color: #2ec946; border: 1px solid #ccc; margin-right: 10px;"></div>
+                            <span><strong>Aprobado</strong> - Documento revisado y aprobado</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="d-flex align-items-center mb-2">
+                            <div style="width: 20px; height: 20px; background-color: #ffc107; border: 1px solid #ccc; margin-right: 10px;"></div>
+                            <span><strong>Corregido</strong> - Requiere correcciones menores</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="d-flex align-items-center mb-2">
+                            <div style="width: 20px; height: 20px; background-color: #dc3545; border: 1px solid #ccc; margin-right: 10px;"></div>
+                            <span><strong>No Desarrollado</strong> - Pendiente de desarrollo</span>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="d-flex align-items-center mb-2">
+                            <div style="width: 20px; height: 20px; border: 3px solid #dc3545; margin-right: 10px;"></div>
+                            <span><strong>En Revisión</strong> - Requiere revisión especial</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
