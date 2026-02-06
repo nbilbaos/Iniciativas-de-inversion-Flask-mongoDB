@@ -24,39 +24,24 @@ Esta es una aplicación web desarrollada con Flask y MongoDB que incluye un sist
    git clone [https://github.com/tu-usuario/flask-mongodb-app.git](https://github.com/tu-usuario/flask-mongodb-app.git)
    cd flask-mongodb-app
 
-# Crear entorno virtual para las dependecias (requiere instalar venv con pip)
+## Crear entorno virtual para las dependecias (requiere instalar venv con pip)
 python -m venv venv
 
-# En Windows:
+## En Windows:
 venv\Scripts\activate
 
-# En macOS/Linux:
+## En macOS/Linux:
 source venv/bin/activate
 
-# Instalar dependencias:
+## Instalar dependencias:
 pip install -r requirements.txt
 
-# Iniciar MongoDB (puede variar según tu sistema)
+## Iniciar MongoDB (puede variar según tu sistema)
 sudo systemctl start mongod    # En Linux
 brew services start mongodb    # En macOS con Homebrew
 
-# Ejecucion
+## Ejecucion
 python run.py
 
-# Estructura del proyecto
-flask_mongodb_app/
-│
-├── app/                      # Carpeta principal de la aplicación
-│   ├── __init__.py           # Inicializa la aplicación Flask
-│   ├── config.py             # Configuraciones
-│   ├── models/               # Modelos de datos
-│   ├── auth/                 # Blueprint de autenticación
-│   ├── admin/                # Blueprint de administración
-│   ├── director/             # Blueprint de director
-│   ├── colaborador/          # Blueprint de colaborador
-│   ├── static/               # Archivos estáticos (CSS, JS)
-│   └── templates/            # Plantillas HTML
-│
-├── requirements.txt          # Dependencias
-├── .env                      # Variables de entorno
 └── run.py                    # Script para ejecutar la aplicación
+
