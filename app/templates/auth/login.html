@@ -2,31 +2,44 @@
 {% block title %}Iniciar Sesión{% endblock %}
 {% block extra_css %}
 <style>
-    header {
-        display: none !important;
-    }
-    /* Fondo a pantalla completa */
+    header { display: none !important; }
+    /* Fondo a pantalla completa y centrado del contenido */
     body {
-        background: url("{{ url_for('static', filename='img/teatro_lanco.jpg') }}")
-                    no-repeat center center fixed;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        padding: 40px 12px;
+        background: url("{{ url_for('static', filename='img/teatro_lanco.jpg') }}") no-repeat center center fixed;
         background-size: cover;
     }
 
     .login-container {
         /* Fondo blanco semitransparente más marcado */
-        background-color: rgba(255, 255, 255, 0.6);
+        background-color: rgba(255, 255, 255, 0.75);
         /* Desenfoca lo que queda detrás */
         backdrop-filter: blur(1px);
         -webkit-backdrop-filter: blur(8px);
-        max-width: 380px;      /* antes 450px */
-        width: 90%;            /* opcional para pantallas muy pequeñas */
-        margin: 5px auto;     /* más separación arriba/abajo */
-        padding: 40px;         /* antes 30px */
-        border-radius: 10px;
-        box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
-        border: 1px solid rgba(255, 255, 255, 0.8);
+        max-width: 420px;
+        width: 100%;
+        margin: 0 auto;
+        padding: 36px;
+        border-radius: 12px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        border: 1px solid rgba(255, 255, 255, 0.85);
         transition: all 0.3s;  /* para animar suavemente cambios */
+        box-sizing: border-box;
+        max-height: calc(100vh - 80px);
+        overflow: auto;
+    }
 
+    .login-header img { display:block; margin: 0 auto 18px auto; }
+
+    /* Responsividad */
+    @media (max-width: 480px) {
+        .login-container { padding: 20px; border-radius: 8px; }
+        .login-header img { width: 100px; height: 100px; }
+        .captcha-code { width: 120px; font-size: 16px; }
     }
 
     .login-header {

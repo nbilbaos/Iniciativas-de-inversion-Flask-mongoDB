@@ -3,26 +3,28 @@
 
 {% block extra_css %}
 <style>
-    body { background-color: #f8f9fa; user-select: none; }
+    body { background: linear-gradient(135deg, #e8eaef 0%, #d4d8e0 100%); user-select: none; min-height: 100vh; }
 
     /* --- Estilos Generales --- */
     .gantt-wrapper {
         position: relative;
         background: white;
-        border: 1px solid #dee2e6;
-        box-shadow: 0 .5rem 1rem rgba(0,0,0,.15);
+        border: none;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
         display: flex;
         flex-direction: column;
         max-height: 80vh;
+        border-radius: 12px;
+        overflow: hidden;
     }
 
     /* Toolbar de Herramientas */
     .gantt-toolbar {
-        padding: 10px;
-        background: #e9ecef;
-        border-bottom: 1px solid #dee2e6;
+        padding: 16px 20px;
+        background: linear-gradient(135deg, #475569 0%, #334155 100%);
+        border-bottom: none;
         display: flex;
-        gap: 15px;
+        gap: 12px;
         align-items: center;
         flex-wrap: wrap;
         position: sticky;
@@ -30,137 +32,347 @@
         z-index: 100;
     }
 
+    .gantt-toolbar::before {
+        content: '📊';
+        font-size: 1.3rem;
+        margin-right: 8px;
+    }
+
+    .gantt-toolbar label {
+        color: #ffffff;
+        font-weight: 600;
+        font-size: 0.95rem;
+        margin: 0;
+    }
+
     .gantt-container {
         overflow: auto;
         flex-grow: 1;
         position: relative;
         width: 100%;
+        background: white;
     }
 
     .table-gantt {
         width: max-content;
-        border-collapse: collapse; 
+        border-collapse: separate;
+        border-spacing: 0;
         margin-bottom: 0;
-        font-size: 0.85rem;
+        font-size: 0.9rem;
         table-layout: fixed;
     }
 
     .table-gantt th, .table-gantt td {
-        border: 1px solid #dee2e6;
-        height: 35px;
-        padding: 0 3px;
+        border: 1px solid #cbd5e1;
+        height: 40px;
+        padding: 0 6px;
         vertical-align: middle;
         overflow: hidden;
         box-sizing: border-box;
+        transition: all 0.2s ease;
+        color: #1e293b;
     }
 
     /* Celdas Interactivas */
     .cell-interactive {
         cursor: pointer;
-        transition: background-color 0.1s;
-        min-width: 32px;
-        width: 32px;
+        transition: all 0.15s ease;
+        min-width: 36px;
+        width: 36px;
         text-align: center;
+        font-weight: 500;
+        border-radius: 4px;
+        margin: 2px;
+        box-sizing: border-box;
+        color: white;
     }
+    
     .cell-interactive:hover {
-        filter: brightness(0.95);
+        transform: scale(1.08);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
 
     /* Anchos de columnas */
     .col-month { 
-        min-width: 32px; 
-        width: 32px; 
+        min-width: 36px; 
+        width: 36px; 
         text-align: center; 
-        font-weight: 500; 
-        color: #495057;
-        padding: 5px 2px !important;
+        font-weight: 600; 
+        color: #475569;
+        padding: 8px 2px !important;
+        background: linear-gradient(to bottom, #f1f5f9 0%, #e2e8f0 100%);
+        font-size: 0.85rem;
     }
+
+    .col-month:hover {
+        background: linear-gradient(to bottom, #e2e8f0 0%, #cbd5e1 100%);
+    }
+
     .col-year { 
         min-width: 384px; 
         width: 384px; 
         text-align: center; 
         font-weight: bold; 
-        background-color: #e9ecef; 
-        border-bottom: 2px solid #dee2e6; 
-        padding: 8px 0 !important;
-        font-size: 0.9rem;
+        background: linear-gradient(135deg, #475569 0%, #334155 100%);
+        color: #ffffff;
+        border-bottom: 3px solid #1e293b;
+        padding: 10px 0 !important;
+        font-size: 1rem;
+        letter-spacing: 0.5px;
     }
     
     /* Sticky Columns */
     .sticky-col {
-        position: sticky; left: 0; background-color: white; z-index: 10;
-        border-right: 2px solid #dee2e6 !important; min-width: 280px; max-width: 280px;
-        padding-left: 10px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        position: sticky; 
+        left: 0; 
+        background: linear-gradient(to right, #ffffff 0%, #f8fafc 100%);
+        z-index: 10;
+        border-right: 3px solid #475569 !important; 
+        min-width: 280px; 
+        max-width: 280px;
+        padding-left: 12px !important; 
+        white-space: nowrap; 
+        overflow: hidden; 
+        text-overflow: ellipsis;
+        font-weight: 500;
+        color: #1e293b;
     }
+
     .sticky-col-2 {
-        position: sticky; left: 280px; background-color: white; z-index: 10;
-        border-right: 2px solid #dee2e6 !important; min-width: 100px; text-align: center; color: #6c757d;
+        position: sticky; 
+        left: 280px; 
+        background: linear-gradient(to right, #f8fafc 0%, #f1f5f9 100%);
+        z-index: 10;
+        border-right: 3px solid #475569 !important; 
+        min-width: 110px; 
+        text-align: center; 
+        color: #475569;
+        font-weight: 600;
     }
 
     /* Sticky Headers */
     .table-gantt thead tr:nth-child(1) th { 
         position: sticky; 
         top: 0; 
-        z-index: 20; 
-        background-color: #e9ecef;
-        line-height: 35px;
+        z-index: 20;
+        font-weight: 700;
+        letter-spacing: 0.3px;
+        color: white;
     }
+    
     .table-gantt thead tr:nth-child(2) th { 
         position: sticky; 
-        top: 35px; 
+        top: 40px; 
         z-index: 20; 
-        background-color: #f8f9fa;
-        line-height: 35px;
+        background: linear-gradient(to bottom, #e2e8f0 0%, #cbd5e1 100%);
+        font-weight: 600;
+        color: #1e293b;
     }
-    .table-gantt thead th.sticky-col, .table-gantt thead th.sticky-col-2 { 
-        z-index: 30 !important; 
-        background-color: #f8f9fa; 
+    
+    .table-gantt thead th.sticky-col { 
+        z-index: 30 !important;
+        background: linear-gradient(to right, #ffffff 0%, #f8fafc 100%);
+        color: #1e293b;
+    }
+
+    .table-gantt thead th.sticky-col-2 { 
+        z-index: 30 !important;
+        background: linear-gradient(to right, #f8fafc 0%, #f1f5f9 100%);
+        color: #1e293b;
+    }
+
+    /* Filas de datos */
+    .table-gantt tbody tr {
+        transition: all 0.25s ease;
+    }
+
+    .table-gantt tbody tr:hover {
+        background: linear-gradient(to right, #f1f5f9 0%, #e2e8f0 100%);
+        box-shadow: inset 0 2px 8px rgba(71, 85, 105, 0.08);
+    }
+
+    .table-gantt tbody tr:nth-child(even) {
+        background: linear-gradient(to right, #f8fafc 0%, #ffffff 100%);
+    }
+
+    .table-gantt tbody tr:nth-child(odd) {
+        background: white;
     }
 
     /* --- Colores de Estado --- */
-    .bg-corregido { background-color: #ffc107 !important; }
-    .bg-aprobado { background-color: #2ec946 !important; }
-    .bg-no-desarrollado { background-color: #dc3545 !important; }
-    .bg-white-clean { background-color: white !important; }
+    .bg-corregido { 
+        background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%) !important;
+        color: white !important;
+        font-weight: 600;
+        border: none !important;
+    }
+
+    .bg-aprobado { 
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+        color: white !important;
+        font-weight: 600;
+        border: none !important;
+    }
+
+    .bg-no-desarrollado { 
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+        color: white !important;
+        font-weight: 600;
+        border: none !important;
+    }
+
+    .bg-white-clean { background-color: white !important; border: 1px solid #cbd5e1 !important; color: #1e293b; }
     
     /* Borde Rojo (Revisión) Independiente del fondo */
-    .border-revision { box-shadow: inset 0 0 0 3px #dc3545; }
+    .border-revision { 
+        box-shadow: inset 0 0 0 3px #ef4444 !important;
+        outline: 1px solid #ef4444;
+        outline-offset: 1px;
+    }
 
     /* Botones de herramientas activos */
+    .btn-tool {
+        transition: all 0.2s ease;
+        border: 2px solid transparent;
+        border-radius: 6px;
+        color: #1e293b !important;
+    }
+
     .btn-tool.active {
-        outline: 2px solid #0d6efd;
-        outline-offset: 2px;
+        outline: none;
+        border: 2px solid #475569;
+        background: linear-gradient(135deg, #e2e8f015 0%, #cbd5e115 100%);
         transform: scale(1.05);
+        box-shadow: 0 4px 12px rgba(71, 85, 105, 0.3);
     }
     
-    .color-sample { width: 15px; height: 15px; display: inline-block; border: 1px solid #ccc; margin-right: 5px; }
+    .color-sample { 
+        width: 18px; 
+        height: 18px; 
+        display: inline-block; 
+        border: 2px solid white; 
+        margin-right: 6px;
+        border-radius: 3px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
 
-    .doc-link { text-decoration: none; color: #212529; font-weight: 500; }
-    .prof-link { text-decoration: underline; color: #0d6efd; cursor: pointer; }
+    .doc-link { 
+        text-decoration: none; 
+        color: #475569;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+
+    .doc-link:hover {
+        color: #1e293b;
+        text-decoration: underline;
+    }
+
+    .prof-link { 
+        text-decoration: none; 
+        color: #475569;
+        cursor: pointer;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+
+    .prof-link:hover {
+        text-decoration: underline;
+        color: #1e293b;
+    }
+
+    /* Texto de información */
+    .text-muted {
+        color: #64748b !important;
+    }
+
+    /* Estilos para botones en la toolbar */
+    .gantt-toolbar .btn {
+        background: white;
+        color: #1e293b;
+        border: 2px solid white;
+        font-weight: 600;
+        border-radius: 6px;
+        transition: all 0.2s ease;
+        padding: 6px 12px;
+        font-size: 0.9rem;
+    }
+
+    .gantt-toolbar .btn:hover {
+        background: rgba(255,255,255,0.95);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+    }
+
+    .gantt-toolbar .btn i {
+        margin-right: 5px;
+    }
+
+    .gantt-toolbar .btn-group {
+        background: rgba(255,255,255,0.1);
+        border-radius: 8px;
+        padding: 4px;
+    }
+
+    .gantt-toolbar .btn-group .btn {
+        background: rgba(255,255,255,0.2);
+        border: 1px solid rgba(255,255,255,0.3);
+        margin: 3px;
+    }
+
+    .gantt-toolbar .btn-group .btn:hover {
+        background: rgba(255,255,255,0.3);
+        border-color: rgba(255,255,255,0.5);
+    }
+
+    .gantt-toolbar .alert {
+        background: rgba(255,255,255,0.15);
+        border: 2px solid rgba(255,255,255,0.3);
+        color: white;
+        border-radius: 8px;
+        padding: 8px 12px;
+        margin: 0;
+    }
+
+    .gantt-toolbar .alert i {
+        color: rgba(255,255,255,0.9);
+    }
+
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+<div class="container-fluid py-5">
+    <div class="d-flex justify-content-between align-items-start mb-5">
         <div>
-            <h1>Carta Gantt — {{ iniciativa.get('nombre', 'Iniciativa') }}</h1>
-            <p class="text-muted">{{ iniciativa.get('codigo', 'N/A') }}</p>
+            <h1 style="color: #1e293b; font-weight: 800; font-size: 2.2rem; margin-bottom: 8px;">
+                <i class="fas fa-chart-gantt me-3"></i>Carta Gantt
+            </h1>
+            <h2 style="color: #475569; font-weight: 600; font-size: 1.5rem; margin: 0 0 12px 0;">
+                {{ iniciativa.get('nombre', 'Iniciativa') }}
+            </h2>
+            <p style="color: #64748b; font-size: 0.95rem; margin: 0;">
+                <i class="fas fa-tag me-2"></i><strong>Código:</strong> {{ iniciativa.get('codigo', 'N/A') }}
+            </p>
         </div>
-        <div>
-            <a href="{{ url_for('director.view_initiative', iniciativa_id=iniciativa_id) }}" class="btn btn-secondary me-2"><i class="fas fa-arrow-left me-2"></i> Volver</a>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('director.view_initiative', iniciativa_id=iniciativa_id) }}" class="btn btn-outline-secondary" style="border-width: 2px; font-weight: 600; border-radius: 6px; color: #475569; border-color: #cbd5e1;">
+                <i class="fas fa-arrow-left me-2"></i> Volver
+            </a>
             {% if is_director %}
-            <button class="btn btn-success" id="saveBtn"><i class="fas fa-save me-2"></i> Guardar Cambios</button>
+            <button class="btn btn-success" id="saveBtn" style="font-weight: 600; border-radius: 6px; padding: 8px 16px;">
+                <i class="fas fa-save me-2"></i> Guardar Cambios
+            </button>
             {% endif %}
         </div>
     </div>
 
-    <div class="card shadow-sm">
-        <div class="card-body p-0">
+    <div style="border: none; box-shadow: 0 8px 32px rgba(0,0,0,0.1); border-radius: 12px; overflow: hidden;">
+        <div style="padding: 0;">
             <div class="gantt-wrapper">
                 <!-- Toolbar -->
                 <div class="gantt-toolbar shadow-sm">
-                    <div class="fw-bold me-2"><i class="fas fa-paint-brush me-1"></i> Herramientas:</div>
+                    <div class="fw-bold me-2" style="color: white;"><i class="fas fa-paint-brush me-1"></i> Herramientas:</div>
                     
                     {% if is_director %}
                     <div class="btn-group me-3" role="group">
@@ -187,9 +399,6 @@
                     <div class="btn-group border-start ps-3" role="group">
                         <button type="button" class="btn btn-light" id="addYearBtn" title="Añadir un año más a la Carta Gantt">
                             <i class="fas fa-calendar-plus text-success me-1"></i> Añadir Año
-                        </button>
-                        <button type="button" class="btn btn-light" id="downloadImageBtn" title="Descargar Carta Gantt como imagen">
-                            <i class="fas fa-image text-primary me-1"></i> Descargar Imagen
                         </button>
                     </div>
                     {% else %}
@@ -242,42 +451,65 @@
                 </div>
             </div>
         </div>
-        <div class="p-2 bg-light border-top">
-            <small class="text-muted"><i class="fas fa-info-circle me-1"></i> {% if is_director %}Haz clic en las celdas para cambiar el estado del documento.{% else %}Vista de lectura - solo el Director puede editar.{% endif %}</small>
+        <div style="padding: 14px 20px; background: linear-gradient(to right, #e2e8f0 0%, #cbd5e1 100%); border-top: 2px solid #cbd5e1; border-radius: 0 0 12px 12px;">
+            <small class="text-muted"><i class="fas fa-lightbulb me-2" style="color: #475569;"></i>
+                {% if is_director %}
+                    <strong style="color: #1e293b;">💡 Tip:</strong> <span style="color: #475569;">Haz clic en las celdas para cambiar el estado del documento</span>
+                {% else %}
+                    <strong style="color: #1e293b;">👁️ Vista de lectura:</strong> <span style="color: #475569;">Solo el Director puede editar</span>
+                {% endif %}
+            </small>
         </div>
     </div>
 
     <!-- Leyenda de Colores -->
-    <div class="row mt-4">
+    <div class="row mt-5">
         <div class="col-12">
-            <div class="card bg-light">
-                <div class="card-header">
-                    <h6 class="mb-0"><i class="fas fa-paint-brush me-2"></i>Leyenda de Colores</h6>
+            <div class="card" style="border: none; box-shadow: 0 8px 32px rgba(0,0,0,0.1); border-radius: 12px;">
+                <div class="card-header" style="background: linear-gradient(135deg, #475569 0%, #334155 100%); border: none; border-radius: 12px 12px 0 0; padding: 20px;">
+                    <h6 class="mb-0" style="color: white; font-weight: 700; font-size: 1.1rem;">
+                        <i class="fas fa-palette me-2"></i>Leyenda de Estados
+                    </h6>
                 </div>
-                <div class="card-body">
+                <div class="card-body" style="background: linear-gradient(to bottom, #f1f5f9 0%, #e2e8f0 100%); padding: 24px;">
                     <div class="row">
-                        <div class="col-md-3">
-                            <div class="d-flex align-items-center mb-2">
-                                <div style="width: 20px; height: 20px; background-color: #2ec946; border: 1px solid #ccc; margin-right: 10px;"></div>
-                                <span><strong>Aprobado</strong> - Revisado y aprobado</span>
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            <div class="d-flex align-items-center" style="background: white; padding: 16px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); transition: all 0.2s ease;" onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 6px 16px rgba(0,0,0,0.1)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.05)';">
+                                <div style="min-width: 28px; width: 28px; height: 28px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 6px; margin-right: 12px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);"></div>
+                                <div>
+                                    <strong style="color: #10b981; display: block;">Aprobado</strong>
+                                    <small style="color: #64748b;">Revisado y aprobado</small>
+                                </div>
                             </div>
                         </div>
-                        <div class="col-md-3">
-                            <div class="d-flex align-items-center mb-2">
-                                <div style="width: 20px; height: 20px; background-color: #ffc107; border: 1px solid #ccc; margin-right: 10px;"></div>
-                                <span><strong>Corregido</strong> - Correcciones menores</span>
+
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            <div class="d-flex align-items-center" style="background: white; padding: 16px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); transition: all 0.2s ease;" onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 6px 16px rgba(0,0,0,0.1)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.05)';">
+                                <div style="min-width: 28px; width: 28px; height: 28px; background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); border-radius: 6px; margin-right: 12px; box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);"></div>
+                                <div>
+                                    <strong style="color: #f59e0b; display: block;">Corregido</strong>
+                                    <small style="color: #64748b;">Correcciones menores</small>
+                                </div>
                             </div>
                         </div>
-                        <div class="col-md-3">
-                            <div class="d-flex align-items-center mb-2">
-                                <div style="width: 20px; height: 20px; background-color: #dc3545; border: 1px solid #ccc; margin-right: 10px;"></div>
-                                <span><strong>No Desarrollado</strong> - Pendiente</span>
+
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            <div class="d-flex align-items-center" style="background: white; padding: 16px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); transition: all 0.2s ease;" onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 6px 16px rgba(0,0,0,0.1)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.05)';">
+                                <div style="min-width: 28px; width: 28px; height: 28px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border-radius: 6px; margin-right: 12px; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);"></div>
+                                <div>
+                                    <strong style="color: #ef4444; display: block;">No Desarrollado</strong>
+                                    <small style="color: #64748b;">Pendiente de revisión</small>
+                                </div>
                             </div>
                         </div>
-                        <div class="col-md-3">
-                            <div class="d-flex align-items-center mb-2">
-                                <div style="width: 20px; height: 20px; border: 3px solid #dc3545; margin-right: 10px;"></div>
-                                <span><strong>En Revisión</strong> - Revisión especial</span>
+
+                        <div class="col-md-6 col-lg-3 mb-3">
+                            <div class="d-flex align-items-center" style="background: white; padding: 16px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); transition: all 0.2s ease;" onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 6px 16px rgba(0,0,0,0.1)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.05)';">
+                                <div style="min-width: 28px; width: 28px; height: 28px; border: 3px solid #ef4444; border-radius: 6px; margin-right: 12px; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);"></div>
+                                <div>
+                                    <strong style="color: #ef4444; display: block;">En Revisión</strong>
+                                    <small style="color: #64748b;">Requiere revisión especial</small>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -289,8 +521,6 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
     const canEdit = {{ 'true' if is_director else 'false' }};
     const iniciativaId = '{{ iniciativa_id }}';
@@ -373,13 +603,7 @@
             }
         }
 
-        // Botón Descargar Imagen (disponible para todos)
-        const downloadImageBtn = document.getElementById('downloadImageBtn');
-        if (downloadImageBtn) {
-            downloadImageBtn.addEventListener('click', () => {
-                downloadGanttImage();
-            });
-        }
+
     });
 
     function applyTool(cell) {
@@ -547,38 +771,7 @@
         });
     }
 
-    function downloadGanttImage() {
-        const downloadBtn = document.getElementById('downloadImageBtn');
-        const originalText = downloadBtn.innerHTML;
-        downloadBtn.disabled = true;
-        downloadBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Procesando...';
 
-        const ganttTable = document.getElementById('ganttTable');
-        const iniciativaName = document.querySelector('h1').textContent.replace(' — ', '_').trim();
-
-        html2canvas(ganttTable, {
-            scale: 2,
-            useCORS: true,
-            allowTaint: true,
-            backgroundColor: '#ffffff',
-            logging: false
-        }).then(canvas => {
-            // Convertir canvas a imagen JPEG
-            const link = document.createElement('a');
-            link.href = canvas.toDataURL('image/jpeg', 0.95);
-            link.download = `Gantt_${iniciativaName}_${new Date().toISOString().split('T')[0]}.jpg`;
-            link.click();
-
-            // Restaurar botón
-            downloadBtn.disabled = false;
-            downloadBtn.innerHTML = originalText;
-        }).catch(error => {
-            console.error('Error al generar imagen:', error);
-            alert('Error al generar la imagen. Por favor intenta de nuevo.');
-            downloadBtn.disabled = false;
-            downloadBtn.innerHTML = originalText;
-        });
-    }
 </script>
 {% endblock %}
 

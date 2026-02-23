@@ -18,36 +18,91 @@
                 <div class="card-header bg-dark text-white">
                     <h5 class="mb-0">Configuración de Visualización</h5>
                 </div>
-                <div class="card-body">
+                <div class="card-body" style="max-height: 85vh; overflow-y: auto;">
+                    <!-- Eje X -->
                     <div class="mb-3">
-                        <label class="form-label">Eje X (Categorías)</label>
+                        <label class="form-label"><strong>Eje X (Categorías)</strong></label>
                         <select id="labelField" class="form-select">
                             {% for col in columns %}
                             <option value="{{ col }}">{{ col|replace('_', ' ')|title }}</option>
                             {% endfor %}
                         </select>
                     </div>
+
+                    <!-- Eje Y Flexible -->
                     <div class="mb-3">
-                        <label class="form-label">Eje Y (Valores)</label>
-                        <select id="valueField" class="form-select" disabled>
-                            <option value="count" selected>Contar registros (Frecuencia)</option>
-                        </select>
+                        <label class="form-label"><strong>Eje Y (Valores)</strong></label>
+                        <div class="input-group mb-2">
+                            <select id="valueFieldSelect" class="form-select">
+                                <option value="">-- Selecciona campo --</option>
+                                <option value="count">📊 Contar registros</option>
+                            </select>
+                            <select id="aggregationOp" class="form-select">
+                                <option value="count">Contar</option>
+                                <option value="sum">Sumar</option>
+                                <option value="avg">Promedio</option>
+                                <option value="min">Mínimo</option>
+                                <option value="max">Máximo</option>
+                            </select>
+                            <button onclick="addYField()" class="btn btn-outline-primary">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                        <div id="yFieldsList" class="mb-2">
+                            <span class="badge bg-primary">📊 Contar</span>
+                        </div>
+                        <small class="text-muted">Agregar múltiples métricas para comparar</small>
+                        <button onclick="clearYFields()" class="btn btn-sm btn-link p-0 ms-2">Limpiar</button>
                     </div>
+
+                    <!-- Tipo de Gráfico -->
                     <div class="mb-3">
-                        <label class="form-label">Tipo de Gráfico</label>
+                        <label class="form-label"><strong>Tipo de Gráfico</strong></label>
                         <select id="chartType" class="form-select">
-                            <option value="bar">Barras</option>
-                            <option value="line">Líneas</option>
-                            <option value="pie">Torta (Pie)</option>
-                            <option value="doughnut">Donas (Doughnut)</option>
+                            <option value="bar">📊 Barras</option>
+                            <option value="line">📈 Líneas</option>
+                            <option value="pie">🥧 Torta (Pie)</option>
+                            <option value="doughnut">🍩 Donas (Doughnut)</option>
                         </select>
                     </div>
 
+                    <hr>
+
+                    <!-- Filtros -->
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Filtros</strong></label>
+                        <button onclick="toggleFiltersPanel()" class="btn btn-sm btn-outline-secondary w-100 mb-2">
+                            <i class="fas fa-filter me-2"></i> Agregar Filtros
+                        </button>
+                        <div id="filterPanel" style="display:none;" class="border rounded p-2 bg-light mb-2">
+                            <div class="mb-2">
+                                <label class="form-label">Filtrar por:</label>
+                                <select id="filterField" class="form-select form-select-sm">
+                                    <option value="">-- Campo --</option>
+                                    {% for col in columns %}
+                                    <option value="{{ col }}">{{ col|replace('_', ' ')|title }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div id="filterValuesContainer" class="mb-2"></div>
+                            <button onclick="applyFilter()" class="btn btn-sm btn-primary w-100">
+                                <i class="fas fa-check me-1"></i> Aplicar
+                            </button>
+                        </div>
+                        <div id="activeFiltersList" class="mb-2"></div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Botones de Acción -->
                     <button onclick="updateChart()" class="btn btn-primary w-100">
                         <i class="fas fa-sync-alt me-2"></i> Actualizar Gráfico
                     </button>
                     <button onclick="downloadChart()" class="btn btn-success w-100 mt-2">
                         <i class="fas fa-download me-2"></i> Descargar Imagen (JPG)
+                    </button>
+                    <button onclick="downloadDataCSV()" class="btn btn-info w-100 mt-2">
+                        <i class="fas fa-file-csv me-2"></i> Descargar Datos (CSV)
                     </button>
                 </div>
             </div>
@@ -71,55 +126,265 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     const rawData = {{ data|tojson|safe }};
+    const columns = {{ columns|tojson|safe }};
     let myChart = null;
+    let yFields = [{ field: 'count', operation: 'count' }];
+    let activeFilters = {};
 
+    // Detectar tipos de datos
+    function detectDataTypes() {
+        const types = {};
+        columns.forEach(col => {
+            types[col] = 'string'; // Por defecto string
+        });
+
+        rawData.forEach(item => {
+            columns.forEach(col => {
+                const val = item[col];
+                if (val !== null && val !== undefined && val !== '') {
+                    if (types[col] !== 'mixed') {
+                        const num = parseFloat(val);
+                        if (!isNaN(num) && types[col] !== 'string') {
+                            types[col] = 'number';
+                        } else if (types[col] === 'number') {
+                            types[col] = 'mixed';
+                        }
+                    }
+                }
+            });
+        });
+        return types;
+    }
+
+    // Rellenar opciones numéricas en Eje Y
+    function populateNumericFields() {
+        const types = detectDataTypes();
+        const select = document.getElementById('valueFieldSelect');
+        
+        columns.forEach(col => {
+            if (types[col] === 'number' || types[col] === 'mixed') {
+                const option = document.createElement('option');
+                option.value = col;
+                option.textContent = '🔢 ' + col.replace(/_/g, ' ').toUpperCase();
+                select.appendChild(option);
+            }
+        });
+    }
+
+    // Agregar campo Y
+    function addYField() {
+        const field = document.getElementById('valueFieldSelect').value;
+        const operation = document.getElementById('aggregationOp').value;
+
+        if (!field) {
+            alert('Selecciona un campo primero');
+            return;
+        }
+
+        const exists = yFields.some(f => f.field === field && f.operation === operation);
+        if (exists) {
+            alert('Esta métrica ya está agregada');
+            return;
+        }
+
+        yFields.push({ field, operation });
+        renderYFieldsList();
+        document.getElementById('valueFieldSelect').value = '';
+    }
+
+    // Renderizar lista de campos Y
+    function renderYFieldsList() {
+        const container = document.getElementById('yFieldsList');
+        container.innerHTML = yFields.map((item, idx) => `
+            <span class="badge bg-primary me-1 mb-1">
+                ${item.operation.toUpperCase()} (${item.field})
+                <button onclick="removeYField(${idx})" class="btn-close btn-close-white ms-1" style="font-size: 0.7rem;"></button>
+            </span>
+        `).join('');
+    }
+
+    // Eliminar campo Y
+    function removeYField(idx) {
+        yFields.splice(idx, 1);
+        if (yFields.length === 0) {
+            yFields = [{ field: 'count', operation: 'count' }];
+        }
+        renderYFieldsList();
+    }
+
+    // Limpiar campos Y
+    function clearYFields() {
+        yFields = [{ field: 'count', operation: 'count' }];
+        renderYFieldsList();
+    }
+
+    // Toggle panel de filtros
+    function toggleFiltersPanel() {
+        const panel = document.getElementById('filterPanel');
+        panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    }
+
+    // Manejar filtros
+    document.getElementById('filterField').addEventListener('change', function() {
+        const field = this.value;
+        const container = document.getElementById('filterValuesContainer');
+        container.innerHTML = '';
+
+        if (!field) return;
+
+        const values = [...new Set(rawData.map(item => item[field]).filter(v => v))];
+        const types = detectDataTypes();
+
+        if (types[field] === 'number') {
+            container.innerHTML = `
+                <div class="mb-2">
+                    <input type="number" id="rangeMin" class="form-control form-control-sm mb-1" placeholder="Mínimo">
+                    <input type="number" id="rangeMax" class="form-control form-control-sm" placeholder="Máximo">
+                </div>
+            `;
+        } else {
+            container.innerHTML = `
+                <div style="max-height: 150px; overflow-y: auto;">
+                    ${values.slice(0, 20).map(v => `
+                        <div class="form-check form-check-sm">
+                            <input class="form-check-input filter-checkbox" type="checkbox" value="${v}" id="filter_${v}">
+                            <label class="form-check-label" for="filter_${v}">${v}</label>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+    });
+
+    // Aplicar filtro
+    function applyFilter() {
+        const field = document.getElementById('filterField').value;
+        if (!field) return;
+
+        const types = detectDataTypes();
+        
+        if (types[field] === 'number') {
+            const min = parseFloat(document.getElementById('rangeMin').value) || null;
+            const max = parseFloat(document.getElementById('rangeMax').value) || null;
+            activeFilters[field] = { type: 'range', min, max };
+        } else {
+            const checked = Array.from(document.querySelectorAll('.filter-checkbox:checked')).map(cb => cb.value);
+            if (checked.length > 0) {
+                activeFilters[field] = { type: 'values', values: checked };
+            }
+        }
+
+        renderActiveFilters();
+        document.getElementById('filterPanel').style.display = 'none';
+        updateChart();
+    }
+
+    // Renderizar filtros activos
+    function renderActiveFilters() {
+        const container = document.getElementById('activeFiltersList');
+        const filters = Object.entries(activeFilters);
+        
+        if (filters.length === 0) {
+            container.innerHTML = '';
+            return;
+        }
+
+        container.innerHTML = '<small class="text-muted">Filtros: </small>' + 
+            filters.map(([field, filter]) => `
+                <span class="badge bg-warning text-dark me-1 mb-1">
+                    ${field}
+                    <button onclick="removeFilter('${field}')" class="btn-close ms-1" style="font-size: 0.7rem;"></button>
+                </span>
+            `).join('');
+    }
+
+    // Remover filtro
+    function removeFilter(field) {
+        delete activeFilters[field];
+        renderActiveFilters();
+        updateChart();
+    }
+
+    // Aplicar filtros a datos
+    function applyFiltersToData() {
+        return rawData.filter(item => {
+            for (let [field, filter] of Object.entries(activeFilters)) {
+                if (filter.type === 'range') {
+                    const val = parseFloat(item[field]);
+                    if (filter.min !== null && val < filter.min) return false;
+                    if (filter.max !== null && val > filter.max) return false;
+                } else if (filter.type === 'values') {
+                    if (!filter.values.includes(String(item[field]))) return false;
+                }
+            }
+            return true;
+        });
+    }
+
+    // Actualizar gráfico
     function updateChart() {
         const labelField = document.getElementById('labelField').value;
-        const selectedYOptions = ['count']; // Solo frecuencia
         const chartType = document.getElementById('chartType').value;
+        const filteredData = applyFiltersToData();
 
+        // Agregación avanzada
         const aggregation = {};
-        rawData.forEach(item => {
+        filteredData.forEach(item => {
             const xVal = item[labelField] || 'Sin Datos';
             if (!aggregation[xVal]) {
                 aggregation[xVal] = {};
-                selectedYOptions.forEach(y => aggregation[xVal][y] = 0);
+                yFields.forEach(y => aggregation[xVal][y.field + '_' + y.operation] = []);
             }
             
-            selectedYOptions.forEach(y => {
-                if (y === 'count') {
-                    aggregation[xVal][y] += 1;
+            yFields.forEach(y => {
+                const key = y.field + '_' + y.operation;
+                if (y.operation === 'count') {
+                    aggregation[xVal][key].push(1);
                 } else {
-                    const num = parseFloat(item[y]);
-                    aggregation[xVal][y] += isNaN(num) ? 0 : num;
+                    const num = parseFloat(item[y.field]);
+                    if (!isNaN(num)) {
+                        aggregation[xVal][key].push(num);
+                    }
                 }
             });
         });
 
-        const labels = Object.keys(aggregation);
+        // Calcular valores según operación
+        const dataMap = {};
+        Object.keys(aggregation).forEach(xVal => {
+            dataMap[xVal] = {};
+            yFields.forEach(y => {
+                const key = y.field + '_' + y.operation;
+                const values = aggregation[xVal][key];
+                
+                switch(y.operation) {
+                    case 'count': dataMap[xVal][key] = values.length; break;
+                    case 'sum': dataMap[xVal][key] = values.reduce((a,b) => a+b, 0); break;
+                    case 'avg': dataMap[xVal][key] = values.length > 0 ? values.reduce((a,b) => a+b, 0) / values.length : 0; break;
+                    case 'min': dataMap[xVal][key] = Math.min(...values); break;
+                    case 'max': dataMap[xVal][key] = Math.max(...values); break;
+                }
+            });
+        });
+
+        const labels = Object.keys(dataMap);
         const colors = [
             { border: 'rgba(54, 162, 235, 1)', bg: 'rgba(54, 162, 235, 0.5)' },
             { border: 'rgba(255, 99, 132, 1)', bg: 'rgba(255, 99, 132, 0.5)' },
             { border: 'rgba(255, 206, 86, 1)', bg: 'rgba(255, 206, 86, 0.5)' },
             { border: 'rgba(75, 192, 192, 1)', bg: 'rgba(75, 192, 192, 0.5)' },
             { border: 'rgba(153, 102, 255, 1)', bg: 'rgba(153, 102, 255, 0.5)' },
-            { border: 'rgba(255, 159, 64, 1)', bg: 'rgba(255, 159, 64, 0.5)' },
-            { border: 'rgba(199, 199, 199, 1)', bg: 'rgba(199, 199, 199, 0.5)' },
-            { border: 'rgba(83, 102, 255, 1)', bg: 'rgba(83, 102, 255, 0.5)' },
-            { border: 'rgba(40, 167, 69, 1)', bg: 'rgba(40, 167, 69, 0.5)' },
-            { border: 'rgba(220, 53, 69, 1)', bg: 'rgba(220, 53, 69, 0.5)' },
-            { border: 'rgba(23, 162, 184, 1)', bg: 'rgba(23, 162, 184, 0.5)' },
-            { border: 'rgba(255, 193, 7, 1)', bg: 'rgba(255, 193, 7, 0.5)' }
+            { border: 'rgba(255, 159, 64, 1)', bg: 'rgba(255, 159, 64, 0.5)' }
         ];
 
-        const datasets = selectedYOptions.map((yField, index) => {
+        const datasets = yFields.map((yField, index) => {
             const color = colors[index % colors.length];
-            // Usar múltiples colores si es gráfico circular o si es de barras con una sola serie
-            const useMultiColor = (chartType === 'pie' || chartType === 'doughnut' || (chartType === 'bar' && selectedYOptions.length === 1));
+            const useMultiColor = chartType === 'pie' || chartType === 'doughnut' || (chartType === 'bar' && yFields.length === 1);
+            const key = yField.field + '_' + yField.operation;
 
             return {
-                label: yField === 'count' ? 'FRECUENCIA' : yField.replace(/_/g, ' ').toUpperCase(),
-                data: labels.map(l => aggregation[l][yField]),
+                label: `${yField.operation.toUpperCase()} (${yField.field})`,
+                data: labels.map(l => dataMap[l][key] || 0),
                 backgroundColor: useMultiColor ? labels.map((_, i) => colors[i % colors.length].bg) : color.bg,
                 borderColor: useMultiColor ? labels.map((_, i) => colors[i % colors.length].border) : color.border,
                 borderWidth: 2,
@@ -127,10 +392,19 @@
             };
         });
 
-        // Generar etiquetas y título coherentes
+        // Actualizar contador de registros
+        const recordCount = filteredData.length;
+        const totalRecords = rawData.length;
+        const countText = recordCount === totalRecords ? `${recordCount} registros` : `${recordCount} / ${totalRecords} registros (filtrados)`;
+        chart_title = document.querySelector('.card-body');
+        const subTitle = document.createElement('small');
+        subTitle.className = 'text-muted d-block mb-2';
+        subTitle.textContent = countText;
+
         const xLabel = labelField.replace(/_/g, ' ').toUpperCase();
-        const yLabelsText = selectedYOptions.map(y => y === 'count' ? 'FRECUENCIA' : y.replace(/_/g, ' ').toUpperCase());
-        const chartTitle = `${yLabelsText.join(' / ')} POR ${xLabel}`;
+        const chartTitle = yFields.length === 1 ? 
+            `${yFields[0].operation.toUpperCase()} DE ${yFields[0].field.toUpperCase()} POR ${xLabel}` :
+            `ANÁLISIS MÚLTIPLE POR ${xLabel}`;
 
         const ctx = document.getElementById('myChart').getContext('2d');
         if (myChart) myChart.destroy();
@@ -145,7 +419,7 @@
                     title: {
                         display: true,
                         text: chartTitle,
-                        font: { size: 18, weight: 'bold' },
+                        font: { size: 16, weight: 'bold' },
                         padding: { top: 10, bottom: 20 }
                     },
                     legend: {
@@ -159,7 +433,7 @@
                     },
                     y: {
                         beginAtZero: true,
-                        title: { display: true, text: selectedYOptions.length === 1 ? yLabelsText[0] : 'VALORES', font: { weight: 'bold' } }
+                        title: { display: true, text: 'Valores', font: { weight: 'bold' } }
                     }
                 } : {}
             },
@@ -177,14 +451,45 @@
         });
     }
 
+    // Descargar gráfico JPG
     function downloadChart() {
         const canvas = document.getElementById('myChart');
         const link = document.createElement('a');
         link.download = 'grafico_analisis.jpg';
-        link.href = canvas.toDataURL('image/jpeg', 1.0); // 1.0 = Calidad máxima
+        link.href = canvas.toDataURL('image/jpeg', 1.0);
         link.click();
     }
 
-    document.addEventListener('DOMContentLoaded', updateChart);
+    // Descargar datos CSV
+    function downloadDataCSV() {
+        const filteredData = applyFiltersToData();
+        if (filteredData.length === 0) {
+            alert('Sin datos para descargar');
+            return;
+        }
+
+        const headers = columns;
+        const csv = [headers.join(',')];
+        
+        filteredData.forEach(row => {
+            const values = headers.map(h => {
+                const val = row[h];
+                const strVal = String(val || '');
+                return strVal.includes(',') ? `"${strVal}"` : strVal;
+            });
+            csv.push(values.join(','));
+        });
+
+        const link = document.createElement('a');
+        link.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv.join('\n'));
+        link.download = 'datos_analisis.csv';
+        link.click();
+    }
+
+    // Inicializar
+    document.addEventListener('DOMContentLoaded', function() {
+        populateNumericFields();
+        updateChart();
+    });
 </script>
 {% endblock %}
