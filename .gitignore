@@ -4,3 +4,7 @@
 +.elasticbeanstalk/*
 +!.elasticbeanstalk/config.yml
 +!.elasticbeanstalk/*.global.yml
+.idea
+.env
+.venv
+.DS_Store

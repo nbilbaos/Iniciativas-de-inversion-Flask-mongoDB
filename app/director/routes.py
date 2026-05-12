@@ -332,7 +332,6 @@ def list_initiatives():
 
         # Ejecutar la consulta con el filtro
         total = coll.count_documents(filt)
-        #iniciativas = list(coll.find(filt).skip(skip).limit(per_page))
         iniciativas = list(coll.find(filt).sort("fecha_creacion", -1).skip(skip).limit(per_page))
 
         colaboradores = list(mongo.db.users.find({
@@ -345,7 +344,6 @@ def list_initiatives():
             'total': total,
             'pages': (total + per_page - 1) // per_page
         }
-
 
         return render_template(
             'director/iniciativas.html',
